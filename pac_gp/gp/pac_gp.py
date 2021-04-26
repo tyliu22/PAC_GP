@@ -17,18 +17,18 @@ from scipy.optimize import minimize
 from tensorflow.contrib.distributions import MultivariateNormalFullCovariance as MVN
 from tensorflow.contrib.distributions import kl_divergence as KL
 
-from pac_gp.gp.gpr import GPRFITC
-from pac_gp.gp.gpr import GPR
-from pac_gp.gp.kerns import RBF
-from pac_gp.gp.mean_functions import Zero
+from gp.gpr import GPRFITC
+from gp.gpr import GPR
+from gp.kerns import RBF
+from gp.mean_functions import Zero
 
-from pac_gp.utils.bin_kl import BinaryKLInv
-from pac_gp.utils.utils import expand_vector
-from pac_gp.utils.utils import flatten
-from pac_gp.utils.utils import Configurable
-from pac_gp.utils.utils import variable_summaries
-from pac_gp.utils.utils import clamp_and_round
-from pac_gp.utils.transformations import Log1pe
+from utils.bin_kl import BinaryKLInv
+from utils.utils import expand_vector
+from utils.utils import flatten
+from utils.utils import Configurable
+from utils.utils import variable_summaries
+from utils.utils import clamp_and_round
+from utils.transformations import Log1pe
 
 
 class PAC_GP_BASE(Configurable):

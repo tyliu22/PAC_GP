@@ -14,11 +14,11 @@ import GPy
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pac_gp.gp.mean_functions import Zero
-from pac_gp.gp.kerns import RBF
-from pac_gp.gp.pac_gp import PAC_INDUCING_HYP_GP
+from gp.mean_functions import Zero
+from gp.kerns import RBF
+from gp.pac_gp import PAC_INDUCING_HYP_GP
 
-from pac_gp.utils.data_generator import generate_sin_data
+from utils.data_generator import generate_sin_data
 
 # %% Configuration
 
@@ -63,31 +63,13 @@ sn2_gpy = sparse_gpy.Gaussian_noise.variance.values
 lengthscales_gpy = sparse_gpy.rbf.lengthscale.values
 z_gpy = sparse_gpy.inducing_inputs.values
 
-# %% Set up and train PAC-GP model
 
-kern = RBF(D)
-mean = Zero()
-pac_gp = PAC_INDUCING_HYP_GP(X=x_data, Y=y_data, Z=z_gpy,
-                             sn2=sn2_gpy,
-                             kernel=kern, mean_function=mean,
-                             epsilon=epsilon_np, delta=delta_np,
-                             verbosity=0,
-                             method='bkl', loss='01_loss')
-pac_gp.optimize()
-Z_opt = pac_gp.Z
 
-# %% Predict on test data
 
 y_mean_full_gpy, y_var_full_gpy = full_gpy.predict(x_true)
 y_mean_sparse_gpy, y_var_sparse_gpy = sparse_gpy.predict(x_true)
-y_mean_pac_gp, y_var_pac_gp = pac_gp.predict(Xnew=x_true, full_cov=False)
 
-# %% Plot data and GPy/GP tf predictions including PAC GP
-
-plt.figure('Data and GPy/GPtf/PAC GP predictions')
-plt.clf()
-
-plt.subplot(1, 3, 1)
+plt.subplot(1, 2, 1)
 plt.title('Full GP (GPy)')
 plt.plot(x_data, y_data, '+', label='data points')
 plt.plot(x_true, y_true, '-', label='true function')
@@ -103,7 +85,7 @@ plt.legend(loc=2)
 plt.ylim([-1.5, 1.5])
 plt.xlim([-3, 3])
 
-plt.subplot(1, 3, 2)
+plt.subplot(1, 2, 2)
 plt.title('Sparse GP (GPy)')
 plt.plot(x_data, y_data, '+', label='data points')
 plt.plot(x_true, y_true, '-', label='true function')
@@ -121,8 +103,45 @@ plt.grid()
 plt.legend(loc=2)
 plt.ylim([-1.5, 1.5])
 plt.xlim([-3, 3])
+plt.show()
 
-plt.subplot(1, 3, 3)
+
+
+
+
+
+
+
+# %% Set up and train PAC-GP model
+
+kern = RBF(D)
+mean = Zero()
+pac_gp = PAC_INDUCING_HYP_GP(X=x_data, Y=y_data, Z=z_gpy,
+                             sn2=sn2_gpy,
+                             kernel=kern, mean_function=mean,
+                             epsilon=epsilon_np, delta=delta_np,
+                             verbosity=0,
+                             method='bkl', loss='01_loss')
+pac_gp.optimize()
+Z_opt = pac_gp.Z
+
+# %% Predict on test data
+
+
+
+y_mean_pac_gp, y_var_pac_gp = pac_gp.predict(Xnew=x_true, full_cov=False)
+
+# %% Plot data and GPy/GP tf predictions including PAC GP
+
+plt.figure('Data and GPy/GPtf/PAC GP predictions')
+plt.clf()
+
+
+
+
+
+
+plt.subplot(1, 1, 1)
 plt.title('PAC GP')
 plt.plot(x_data, y_data, '+', label='data points')
 plt.plot(x_true, y_true, '-', label='true function')
@@ -142,3 +161,4 @@ plt.grid()
 plt.legend(loc=2)
 plt.ylim([-1.5, 1.5])
 plt.xlim([-3, 3])
+plt.show()

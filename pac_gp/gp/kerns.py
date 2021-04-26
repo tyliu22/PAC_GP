@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
 """
 import numpy as np
 import tensorflow as tf
-from pac_gp.utils.transformations import Log1pe
+from utils.transformations import Log1pe
 
 """
 The following snippets are derived from GPFlow V 1.0
