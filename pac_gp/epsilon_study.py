@@ -58,47 +58,58 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
 
             if nInd == 0:
                 # exact GP
+                print('Start running exact full GP')
+                print('Full GP Algorithm 1: GPflow Full GP')
                 RV_gpflow = helpers.compare(X, Y, 'GPflow Full GP', seed=i,
                                             test_size=test_size, ARD=ARD,
                                             epsilon=epsilon, loss=loss)
+                print('Full GP Algorithm 2: bkl-PAC HYP GP')
                 RV_pac = helpers.compare(X, Y, 'bkl-PAC HYP GP', seed=i,
                                          test_size=test_size, ARD=ARD,
                                          epsilon=epsilon, loss=loss)
+                print('Full GP Algorithm 3: sqrt-PAC HYP GP')
                 RV_naive = helpers.compare(X, Y, 'sqrt-PAC HYP GP', seed=i,
                                            test_size=test_size, ARD=ARD,
                                            epsilon=epsilon, loss=loss)
                 RVs = [RV_pac, RV_naive, RV_gpflow]
+                print('End exact full GP')
 
             else:
                 # sparse GP
+                print('Start running sparse GP')
+                print('Sparse GP Algorithm 1: GPflow VFE')
                 RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
                                          test_size=test_size, ARD=ARD,
                                          nInd=nInd, epsilon=epsilon, loss=loss)
+                print('Sparse GP Algorithm 2: GPflow FITC')
                 RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
                                           test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon,
-                                          loss=loss)
+                                          nInd=nInd, epsilon=epsilon,loss=loss)
+                print('Sparse GP Algorithm 3: bkl-PAC Inducing Hyp GP')
                 RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP',
                                          seed=i, test_size=test_size, ARD=ARD,
                                          nInd=nInd, epsilon=epsilon, loss=loss)
+                print('Sparse GP Algorithm 4: sqrt-PAC Inducing Hyp GP')
                 RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP',
                                           seed=i, test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon,
-                                          loss=loss)
+                                          nInd=nInd, epsilon=epsilon, loss=loss)
                 RVs = [RV_vfe, RV_fitc, RV_pac, RV_pac2]
+                print('End sparse GP')
+
 
             for RV in RVs:
                 data += RV
 
+    print('Store data into DataFrame df')
     df = pd.DataFrame(data)
     df.to_pickle(fn_out)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Running full GPs')
     parser.add_argument('-r', '--run', help='run', action='store_true',
-                        default=False)
+                        default=True)
     parser.add_argument('-p', '--plot', help='plot', action='store_true',
-                        default=False)
+                        default=True)
     parser.add_argument('-d', '--dataset', default='boston')
     parser.add_argument('-a', '--ARD', help='use ARD', action='store_true',
                         default=False)

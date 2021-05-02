@@ -46,6 +46,11 @@ x_data, y_data = generate_sin_data(N_train, x_min+dx, x_max-dx,
 x_true, y_true = generate_sin_data(N_test, x_min, x_max, None,
                                    random_order=False)
 
+#
+# noise_eps = np.random.normal(loc=0.0, scale=np.sqrt(0.25),
+#                        size=x_data.shape)
+# x_data = x_data + noise_eps
+
 # %% Set up and train GPy model for comparison
 
 kernel = GPy.kern.RBF(input_dim=D, ARD=True)
@@ -65,11 +70,33 @@ z_gpy = sparse_gpy.inducing_inputs.values
 
 
 
+# %% Set up and train PAC-GP model
+
+kern = RBF(D)
+mean = Zero()
+pac_gp = PAC_INDUCING_HYP_GP(X=x_data, Y=y_data, Z=z_gpy,
+                             sn2=sn2_gpy,
+                             kernel=kern, mean_function=mean,
+                             epsilon=epsilon_np, delta=delta_np,
+                             verbosity=0,
+                             method='bkl', loss='01_loss')
+pac_gp.optimize()
+Z_opt = pac_gp.Z
+
+# %% Predict on test data
+
 
 y_mean_full_gpy, y_var_full_gpy = full_gpy.predict(x_true)
 y_mean_sparse_gpy, y_var_sparse_gpy = sparse_gpy.predict(x_true)
+y_mean_pac_gp, y_var_pac_gp = pac_gp.predict(Xnew=x_true, full_cov=False)
 
-plt.subplot(1, 2, 1)
+# %% Plot data and GPy/GP tf predictions including PAC GP
+
+plt.figure('Data and GPy/GPtf/PAC GP predictions')
+plt.clf()
+
+
+plt.subplot(1, 3, 1)
 plt.title('Full GP (GPy)')
 plt.plot(x_data, y_data, '+', label='data points')
 plt.plot(x_true, y_true, '-', label='true function')
@@ -85,7 +112,7 @@ plt.legend(loc=2)
 plt.ylim([-1.5, 1.5])
 plt.xlim([-3, 3])
 
-plt.subplot(1, 2, 2)
+plt.subplot(1, 3, 2)
 plt.title('Sparse GP (GPy)')
 plt.plot(x_data, y_data, '+', label='data points')
 plt.plot(x_true, y_true, '-', label='true function')
@@ -103,45 +130,9 @@ plt.grid()
 plt.legend(loc=2)
 plt.ylim([-1.5, 1.5])
 plt.xlim([-3, 3])
-plt.show()
 
 
-
-
-
-
-
-
-# %% Set up and train PAC-GP model
-
-kern = RBF(D)
-mean = Zero()
-pac_gp = PAC_INDUCING_HYP_GP(X=x_data, Y=y_data, Z=z_gpy,
-                             sn2=sn2_gpy,
-                             kernel=kern, mean_function=mean,
-                             epsilon=epsilon_np, delta=delta_np,
-                             verbosity=0,
-                             method='bkl', loss='01_loss')
-pac_gp.optimize()
-Z_opt = pac_gp.Z
-
-# %% Predict on test data
-
-
-
-y_mean_pac_gp, y_var_pac_gp = pac_gp.predict(Xnew=x_true, full_cov=False)
-
-# %% Plot data and GPy/GP tf predictions including PAC GP
-
-plt.figure('Data and GPy/GPtf/PAC GP predictions')
-plt.clf()
-
-
-
-
-
-
-plt.subplot(1, 1, 1)
+plt.subplot(1, 3, 3)
 plt.title('PAC GP')
 plt.plot(x_data, y_data, '+', label='data points')
 plt.plot(x_true, y_true, '-', label='true function')

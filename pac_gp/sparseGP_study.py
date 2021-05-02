@@ -58,18 +58,23 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     data = []
 
     # vary number of inducing points
+    print('Start running sparse GP experiments:')
     for nInd in nInd_range:
         for i in range(n_repetitions):
-            RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
-                                     test_size=test_size, ARD=ARD, nInd=nInd,
-                                     epsilon=epsilon, loss=loss)
-            RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
-                                      test_size=test_size, ARD=ARD, nInd=nInd,
-                                      epsilon=epsilon, loss=loss)
+            print('Sparse GP algorithm 1: bkl-PAC Inducing Hyp GP')
             RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
                                      test_size=test_size, ARD=ARD, nInd=nInd,
                                      epsilon=epsilon, loss=loss)
+            print('Sparse GP algorithm 2: sqrt-PAC Inducing Hyp GP')
             RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP', seed=i,
+                                      test_size=test_size, ARD=ARD, nInd=nInd,
+                                      epsilon=epsilon, loss=loss)
+            print('Sparse GP algorithm 3: GPflow VFE')
+            RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
+                                     test_size=test_size, ARD=ARD, nInd=nInd,
+                                     epsilon=epsilon, loss=loss)
+            print('Sparse GP algorithm 4: GPflow FITC')
+            RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
                                       epsilon=epsilon, loss=loss)
 
@@ -78,17 +83,19 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
             data += RV_fitc
             data += RV_pac2
 
+    print('End experiments')
     df = pd.DataFrame(data)
     df.to_pickle(fn_out)
+    # df.to_pickle("sparse_GP_dataframe.pkl")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Running sparse GPs')
 
     parser.add_argument('-r', '--run', help='run', action='store_true',
-                        default=False)
+                        default=True)
     parser.add_argument('-p', '--plot', help='plot', action='store_true',
-                        default=False)
+                        default=True)
     parser.add_argument('-d', '--dataset', default='boston')
     parser.add_argument('-a', '--ARD', help='use ARD', action='store_true',
                         default=False)

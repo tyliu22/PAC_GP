@@ -11,8 +11,8 @@ LICENSE file in the root directory of this source tree.
 
 import tensorflow as tf
 
-from pac_gp.gp.mean_functions import Zero
-from pac_gp.gp.conditionals import feature_conditional
+from gp.mean_functions import Zero
+from gp.conditionals import feature_conditional
 
 """
 The following snippets are derived from GPFlow V 1.0

@@ -11,11 +11,15 @@ LICENSE file in the root directory of this source tree.
 
 import numpy as np
 import tensorflow as tf
+# import tensorflow_probability as tfp
+
 
 from scipy.optimize import minimize
 
-from tensorflow.contrib.distributions import MultivariateNormalFullCovariance as MVN
-from tensorflow.contrib.distributions import kl_divergence as KL
+from tensorflow.contrib.distributions.python.ops.mvn_full_covariance import MultivariateNormalFullCovariance as MVN
+from tensorflow.python.ops.distributions.kullback_leibler import kl_divergence as KL
+# from tensorflow_probability.distributions import MultivariateNormalFullCovariance as MVN
+# from tensorflow_probability.distributions import kl_divergence as KL
 
 from gp.gpr import GPRFITC
 from gp.gpr import GPR
@@ -23,11 +27,11 @@ from gp.kerns import RBF
 from gp.mean_functions import Zero
 
 from utils.bin_kl import BinaryKLInv
-from utils.utils import expand_vector
-from utils.utils import flatten
-from utils.utils import Configurable
-from utils.utils import variable_summaries
-from utils.utils import clamp_and_round
+from utils.utils_gp import expand_vector
+from utils.utils_gp import flatten
+from utils.utils_gp import Configurable
+from utils.utils_gp import variable_summaries
+from utils.utils_gp import clamp_and_round
 from utils.transformations import Log1pe
 
 

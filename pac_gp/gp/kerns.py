@@ -53,11 +53,11 @@ class RBF:
                     lengthscale = np.ones(1)
                     shape = (1,)
 
-            self.variance_unc_tf = tf.placeholder(dtype=tf.float64,
+            self.variance_unc_tf = tf.compat.v1.placeholder(dtype=tf.float64,
                                                   shape=(1, ),
                                                   name='variance_unc')
 
-            lengthscales_unc_tf = tf.placeholder(dtype=tf.float64,
+            lengthscales_unc_tf = tf.compat.v1.placeholder(dtype=tf.float64,
                                                  shape=shape,
                                                  name='lengthscales_unc')
 

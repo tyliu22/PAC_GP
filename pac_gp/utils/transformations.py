@@ -13,7 +13,7 @@ import abc
 import tensorflow as tf
 import numpy as np
 
-from pac_gp.utils.utils import vec_to_tri
+from pac_gp.utils.utils_gp import vec_to_tri
 
 """
 The following snippets are derived from GPFlow V 1.0
@@ -24,7 +24,12 @@ of this source tree.
 """
 
 
-class ITransform(metaclass=abc.ABCMeta):
+
+class ITransform(object):
+    __metaclass__ = abc.ABCMeta
+
+
+# class ITransform(metaclass=abc.ABCMeta):
     """
     x is the unconstrained, free-space parameter, which can take any value.
     y is the constrained, "real units" parameter corresponding to the data.
