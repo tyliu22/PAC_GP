@@ -158,11 +158,13 @@ if __name__ == '__main__':
             test_size=float(args.test_size), ARD=args.ARD,
             n_repetitions=args.n_reps, nInd=args.nInd, loss=args.loss)
 
+    args.plot = "True"
     if args.plot:
         matplotlib.rc('font', **{'size': 14})
         D = pd.read_pickle(fn_results)
         plotting.plot(D, models, x="epsilon", xticks=[0.2, 0.4, 0.6, 0.8, 1.0],
                       ylim=(0, 0.85))
-        plt.savefig(fn_png)
-        plt.savefig(fn_pdf)
-        plt.close()
+        plt.show()
+        # plt.savefig(fn_png)
+        # plt.savefig(fn_pdf)
+        # plt.close()

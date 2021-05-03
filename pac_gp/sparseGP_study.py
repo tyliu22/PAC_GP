@@ -145,4 +145,5 @@ if __name__ == '__main__':
         fn_pdf = os.path.join('ind_points', '%s.pdf' % fn_base)
         plt.savefig(fn_png)
         plt.savefig(fn_pdf)
-        plt.close()
+        plt.show()
+        # plt.close()

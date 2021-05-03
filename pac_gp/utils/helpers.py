@@ -25,10 +25,11 @@ import utils.gpflow_wrapper as gpflow_wrapper
 
 def as_pac(param):
     """
-    shapes parameter to PAC-GP format
+    shapes parameter to PAC-GP format ??????
 
     input:
     param   :   parameter
+    func: data dimension reduce dimension
     """
     if (param.ndim == 1 and param.shape[0] == 1) or (param.ndim == 0):
         return np.array([np.squeeze(param)], dtype=np.float64)
@@ -40,6 +41,7 @@ def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
                         loss='01_loss', **extra):
     """
     transforms model to PAC GP model
+    transform the GP model into
 
     input
     model       :       trained GP-object
@@ -47,14 +49,16 @@ def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
     delta       :       PAC-bound holds with at least prob 1-delta
     ARD         :       automatic feature detection (default: false)
     loss        :       {01_loss, inv_gauss}
+
+    issubclass(class, classinfo):    if class is the subclass of classinfo, then return True, otherwise return False
     """
 
     if issubclass(type(model), PAC_GP_BASE):
         return model
 
     elif issubclass(type(model), GPRegression):
-        kern = kerns.RBF(input_dim=model.input_dim, ARD=ARD)
-        sn2 = as_pac(model.Gaussian_noise.variance)
+        kern = kerns.RBF(input_dim=model.input_dim, ARD=ARD)       # create kernal based dimensions
+        sn2 = as_pac(model.Gaussian_noise.variance)                #
         m = PAC_HYP_GP(X=model.X, Y=model.Y, sn2=sn2, kernel=kern,
                        epsilon=epsilon, delta=delta, loss=loss)
         m.kernel.variance = as_pac(model.kern.variance)
@@ -197,7 +201,7 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
 
     elif model_name == 'sqrt-PAC HYP GP':
         kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)
+        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         mean_function = Zero()
         model = PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init,
                            epsilon=epsilon, mean_function=mean_function,
@@ -206,7 +210,7 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
     elif model_name == 'bkl-PAC Inducing Hyp GP':
         Z = init_inducing_points(X, nInd)
         kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)
+        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         mean_function = Zero()
         model = PAC_INDUCING_HYP_GP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
                                     epsilon=epsilon,
@@ -216,7 +220,7 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
     elif model_name == 'sqrt-PAC Inducing Hyp GP':
         Z = init_inducing_points(X, nInd)
         kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)
+        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         mean_function = Zero()
         model = PAC_INDUCING_HYP_GP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
                                     epsilon=epsilon,
