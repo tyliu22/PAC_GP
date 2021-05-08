@@ -59,19 +59,26 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
             if nInd == 0:
                 # exact GP
                 print('Start running exact full GP')
-                print('Full GP Algorithm: sqrt-PAC HYP GP')
-                RV_naive = helpers.compare(X, Y, 'sqrt-PAC HYP GP', seed=i,
+
+                print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
+                RV_naive_NIGP = helpers.compare(X, Y, 'NIGP_sqrt-PAC HYP GP', seed=i,
                                            test_size=test_size, ARD=ARD,
                                            epsilon=epsilon, loss=loss)
-                print('Full GP Algorithm: bkl-PAC HYP GP')
-                RV_pac = helpers.compare(X, Y, 'bkl-PAC HYP GP', seed=i,
-                                         test_size=test_size, ARD=ARD,
-                                         epsilon=epsilon, loss=loss)
-                print('Full GP Algorithm: GPflow Full GP')
-                RV_gpflow = helpers.compare(X, Y, 'GPflow Full GP', seed=i,
-                                            test_size=test_size, ARD=ARD,
-                                            epsilon=epsilon, loss=loss)
-                RVs = [RV_pac, RV_naive, RV_gpflow]
+
+                # print('Full GP Algorithm: sqrt-PAC HYP GP')
+                # RV_naive = helpers.compare(X, Y, 'sqrt-PAC HYP GP', seed=i,
+                #                            test_size=test_size, ARD=ARD,
+                #                            epsilon=epsilon, loss=loss)
+                # print('Full GP Algorithm: bkl-PAC HYP GP')
+                # RV_pac = helpers.compare(X, Y, 'bkl-PAC HYP GP', seed=i,
+                #                          test_size=test_size, ARD=ARD,
+                #                          epsilon=epsilon, loss=loss)
+                # print('Full GP Algorithm: GPflow Full GP')
+                # RV_gpflow = helpers.compare(X, Y, 'GPflow Full GP', seed=i,
+                #                             test_size=test_size, ARD=ARD,
+                #                             epsilon=epsilon, loss=loss)
+                # RVs = [RV_naive_NIGP, RV_pac, RV_naive, RV_gpflow]
+                RVs = [RV_naive_NIGP]
                 print('End exact full GP')
 
             else:
