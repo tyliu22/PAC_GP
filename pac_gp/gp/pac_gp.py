@@ -9,6 +9,17 @@ LICENSE file in the root directory of this source tree.
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 
+"""
+    NIGP: noisy input Gaussian process case
+    
+    func: _generate_optimization_ops() : add extra parameter sigma_x as variable 
+    func: _get_optimization_x0() : Initialization extra parameters at here
+
+    Learned self.GP function f should be changed, then posterior distribution should be changed
+    KL divergence
+
+"""
+
 import numpy as np
 import tensorflow as tf
 # import tensorflow_probability as tfp
@@ -23,6 +34,7 @@ from tensorflow.python.ops.distributions.kullback_leibler import kl_divergence a
 
 from gp.gpr import GPRFITC
 from gp.gpr import GPR
+from gp.gpr import NIGPR
 from gp.kerns import RBF
 from gp.mean_functions import Zero
 
@@ -193,8 +205,8 @@ class PAC_GP_BASE(Configurable):
             return sess.run(self.penalty_bkl, feed_dict=feed)
 
     def optimize(self):
-        x0 = self._get_optimization_x0()
-        bounds = self._get_bounds()
+        x0 = self._get_optimization_x0() # class PAC_HYP_GP; PAC_INDUCING_GP; PAC_INDUCING_HYP_GP
+        bounds = self._get_bounds() # class PAC_HYP_GP; PAC_INDUCING_HYP_GP; applied in PAC_GP_BASE
 
         if self.verbosity > 0:
             self.ninits += 1
@@ -361,7 +373,7 @@ class PAC_GP_BASE(Configurable):
             self.empirical_risk = 1 - tf.reduce_mean(inv_gauss)
 
         # Regularization term
-        N = tf.cast(tf.shape(self.X_tf)[0], tf.float64)
+        N = tf.cast(tf.shape(self.X_tf)[0], tf.float64) # cast Tensor to a new type
 
         self.log_Theta = tf.cast(self.num_hyps_tf,dtype=tf.float64) * \
                          tf.log(1. + (self.max_log_tf - self.min_log_tf) *
@@ -371,8 +383,8 @@ class PAC_GP_BASE(Configurable):
         self.penalty_2 = self.log_Theta
         self.penalty_3 = tf.log((2 * tf.sqrt(N)) / self.delta_tf)
 
-        self.penalty = tf.sqrt((self.penalty_1 + self.penalty_2 + self.penalty_3) / (2*N))
-        self.penalty_bkl = (self.penalty_1 + self.penalty_2 + self.penalty_3) / N
+        self.penalty = tf.sqrt((self.penalty_1 + self.penalty_2 + self.penalty_3) / (2*N)) # squared PAC Bayes bound
+        self.penalty_bkl = (self.penalty_1 + self.penalty_2 + self.penalty_3) / N #
 
         # Resulting risk upper bound
         self.upper_bound = self.empirical_risk + self.penalty
@@ -572,6 +584,8 @@ class PAC_HYP_GP(PAC_FULL_GP_BASE):
         # variables = [self.kernel.lengthscales_tf,
         #              self.kernel.variance_tf,
         #              self.sn2_tf]
+
+        # If considering the noisy input Gaussian process, add the extra item as the variable
         variables = [self.kernel.lengthscales_unc_tf,
                      self.kernel.variance_unc_tf,
                      self.sn2_unc_tf]
@@ -654,6 +668,7 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
         return shapes
 
     def _get_bounds(self):
+        # ????
         x_min = self.pos_trans.backward(np.exp(self.min_log))
         x_max = self.pos_trans.backward(np.exp(self.max_log))
 
@@ -667,6 +682,7 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
         # Reshape inducing inputs Z (num_inducing, input_dim)
         # and kernel hyperparameters (input_dim + 2)
         # into 1D optimization vector x
+        # *******  hyperparameter: noisy input regularization  *******
         variables = [self.Z,
                      self.pos_trans.backward(self.kernel.lengthscale),
                      self.pos_trans.backward(self.kernel.variance),
@@ -727,3 +743,130 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
             self.debug_variables += 1
             # Common op to run all variable summaries
             self._debug_op = tf.summary.merge_all(key="stats_summaries")
+
+
+
+
+
+class NIGP_PAC_FULL_GP_BASE(PAC_GP_BASE):
+
+    def __init__(self, *args, **kwargs):
+        super(NIGP_PAC_FULL_GP_BASE, self).__init__(*args, **kwargs)
+
+    def _generate_gp_ops(self):
+        # Set up NIGP model: self_noise_x is the noisy input regularization term
+        self.gp = NIGPR(self.X_tf, self.Y_tf, self.sn2_tf, self.noise_x,
+                      self.kernel, self.mean_function)
+
+        # P: GP prior (based on training data X)
+        self.P_mean = self.mean_function(self.X_tf)    # (num_data, output_dim)
+        self.P_mean = tf.squeeze(self.P_mean)          # ONLY VALID FOR output_dim == 1
+        self.P_cov = self.kernel.K(self.X_tf)          # (num_data, num_data)
+        self.P_cov += tf.eye(tf.shape(self.X_tf)[0], dtype=tf.float64) * self.jitter
+
+        # Q: GP posterior
+        self.Q_mean, self.Q_cov = self.gp._build_predict_f(self.X_tf, full_cov=True)
+        self.Q_mean = tf.squeeze(self.Q_mean)           # ONLY VALID FOR output_dim == 1
+        self.Q_cov = tf.squeeze(self.Q_cov)             # ONLY VALID FOR output_dim == 1
+        self.Q_cov += tf.eye(tf.shape(self.X_tf)[0], dtype=tf.float64) * self.jitter
+
+
+
+class NIGP_PAC_HYP_GP(NIGP_PAC_FULL_GP_BASE):
+    """ Full GP optimizing kernel hyperparameters
+    """
+    def __init__(self, *args, **kwargs):
+        super(NIGP_PAC_HYP_GP, self).__init__(*args, **kwargs)
+
+    def _get_parameter_shapes(self):
+        # Kernel lengthscale shape
+        if self.kernel.ARD is True:
+            lengthscales_shape = (self.input_dim, )
+        else:
+            lengthscales_shape = (1, )
+
+        shapes = [lengthscales_shape,
+                  (1, ),
+                  (1, ),
+                  lengthscales_shape] # dimension of noise_x is also input_dim
+        return shapes
+
+    def _get_optimization_x0(self):
+        # Reshape kernel hyperparameters (input_dim + 2)
+        # into 1D optimization vector x
+        variables = [self.pos_trans.backward(self.kernel.lengthscale),
+                     self.pos_trans.backward(self.kernel.variance),
+                     self.pos_trans.backward(self.sn2),
+                     self.pos_trans.backward(self.noise_x)]
+        variables = flatten(variables)
+        return variables
+
+    def _get_bounds(self):
+        x_min = self.pos_trans.backward(np.exp(self.min_log))
+        x_max = self.pos_trans.backward(np.exp(self.max_log))
+
+        if self.kernel.lengthscale.ndim==0:
+            bounds = 2 * [[x_min, x_max]]
+        else:
+            bounds = (self.kernel.lengthscale.shape[0]+1) * [[x_min, x_max]]
+        bounds.append([None, None])
+        return bounds
+
+    def _get_optimization_feed(self, x):
+        # Distribute 1D optimization vector x
+        # into individual model variables
+        shapes = self._get_parameter_shapes()
+        res = expand_vector(x, shapes)
+
+        feed = {
+                self.X_tf: self.X,
+                self.Y_tf: self.Y,
+                self.epsilon_tf: self.epsilon,
+                self.delta_tf: self.delta,
+                self.kernel.variance_unc_tf: res[1],
+                self.kernel.lengthscales_unc_tf: res[0],
+                self.sn2_unc_tf: res[2],
+                # noisy input regularization term
+                self.noise_x: res[3],
+                self.num_hyps_tf: self.num_hyps,
+                self.min_log_tf: self.min_log,
+                self.max_log_tf: self.max_log,
+                self.rounding_digits_tf: self.rounding_digits
+               }
+        return feed
+
+    def _set_variables(self, x):
+        shapes = self._get_parameter_shapes()
+        res = expand_vector(x, shapes)
+
+        self.kernel.lengthscale = self.pos_trans.forward(res[0])
+        self.kernel.variance = self.pos_trans.forward(res[1])
+        self.sn2 = self.pos_trans.forward(res[2])
+        # noisy input regularization matrix as variable
+        self.noise_x = self.pos_trans.forward(res[3])
+        self.round_hyps()
+
+    def _generate_optimization_ops(self):
+        # I'M PRETTY SURE WE NEED THE GRADIENT WITH RESPECT TO UNCONSTRAINED PARAMS
+        # variables = [self.kernel.lengthscales_tf,
+        #              self.kernel.variance_tf,
+        #              self.sn2_tf]
+
+        # If considering the noisy input Gaussian process, add the extra item as the variable
+        variables = [self.kernel.lengthscales_unc_tf,
+                     self.kernel.variance_unc_tf,
+                     # noisy input regularization term
+                     self.noise_x,
+                     self.sn2_unc_tf]
+        if self.method == 'bkl':
+            self.objective = self.upper_bound_bkl
+        else:
+            self.objective = self.upper_bound
+        self.objective_grad = tf.gradients(self.objective, variables)
+
+
+
+
+
+
+

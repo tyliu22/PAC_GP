@@ -9,7 +9,7 @@ LICENSE file in the root directory of this source tree.
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 
-from gp.pac_gp import PAC_HYP_GP, PAC_INDUCING_HYP_GP, PAC_GP_BASE
+from gp.pac_gp import PAC_HYP_GP, PAC_INDUCING_HYP_GP, PAC_GP_BASE, NIGP_PAC_HYP_GP
 from GPy.models import GPRegression, SparseGPRegression
 from gp.mean_functions import Zero
 from gp import kerns
@@ -139,6 +139,9 @@ def run_model(_model, metrics, X_test, Y_test, epsilon, delta, ARD,
 
     # compute evaluation metrics
     res = {}
+    # Load "helpers -> compare() -> metric"   different model function:
+    # model.get_upper_bound();       model.get_upper_bound_bkl()
+    # model.get_kl_divergence();     model.get_emperical_risk()
     for mkey in metrics.keys():
         metric = metrics[mkey]
         kwargs = {'Y_true': Y_test,
@@ -204,6 +207,19 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         mean_function = Zero()
         model = PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init,
+                           epsilon=epsilon, mean_function=mean_function,
+                           delta=delta, verbosity=0, method='naive', loss=loss)
+
+    elif model_name == 'NIGP_sqrt-PAC HYP GP':
+        # change to another kernal: NIGP kernal which consider the noise input regularization item as variable
+        kern = kerns.RBF(input_dim=F, ARD=ARD)
+        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
+        # random initialize noisy input matrix, shape of matrix should be the same as K_NN
+        data_dim = tf.shape(X)[0]
+        noise_x_init = tf.random_normal([data_dim, data_dim], dtype=tf.float64)
+
+        mean_function = Zero()
+        model = NIGP_PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init, noise_x=noise_x_init,
                            epsilon=epsilon, mean_function=mean_function,
                            delta=delta, verbosity=0, method='naive', loss=loss)
 
