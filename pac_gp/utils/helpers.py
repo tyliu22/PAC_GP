@@ -21,6 +21,7 @@ from utils import metrics
 import gpflow
 import time
 import utils.gpflow_wrapper as gpflow_wrapper
+import tensorflow as tf
 
 
 def as_pac(param):
@@ -220,8 +221,8 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
 
         mean_function = Zero()
         model = NIGP_PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init, noise_x=noise_x_init,
-                           epsilon=epsilon, mean_function=mean_function,
-                           delta=delta, verbosity=0, method='naive', loss=loss)
+                                epsilon=epsilon, mean_function=mean_function,
+                                delta=delta, verbosity=0, method='naive', loss=loss)
 
     elif model_name == 'bkl-PAC Inducing Hyp GP':
         Z = init_inducing_points(X, nInd)

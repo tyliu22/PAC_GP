@@ -257,7 +257,7 @@ class NIGPR:
         self.R = tf.shape(Y)[1]   # Output dimensionality
         self.jitter = 1e-06
 
-    def _build_predict_f(self, Xnew, full_cov=False):
+    def _build_predict_f(self, Xnew, full_cov=True):
         """
         Compute the mean and variance of the latent function at some new points
         Xnew.
@@ -288,7 +288,7 @@ class NIGPR:
             fvar = tf.tile(tf.reshape(fvar, (-1, 1)), [1, tf.shape(self.Y)[1]])
         return fmean, fvar
 
-    def _build_predict_y(self, Xnew, full_cov=False):
+    def _build_predict_y(self, Xnew, full_cov=True):
         """
         Compute the mean and variance of the observations at some new points
         Xnew.

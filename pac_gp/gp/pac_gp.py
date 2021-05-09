@@ -94,6 +94,7 @@ class PAC_GP_BASE(Configurable):
         self.verbosity = verbosity
         self.ninits = 0
 
+        # transformation: softplus and its inverse softplus
         self.pos_trans = Log1pe()
 
         if self.verbosity > 3:
@@ -104,6 +105,7 @@ class PAC_GP_BASE(Configurable):
             # Tensorboard file writer for training and test (e.g. train_path = 'train/')
             self.summary_calls = 0
         self.debug_variables = 0
+        # Call this functions -> CALL func: _generate_{data, gp, prediction, pac, optimization}_ops()
         self._generate_ops()
 
     def predict(self, Xnew, full_cov=False):
@@ -319,9 +321,9 @@ class PAC_GP_BASE(Configurable):
         self.num_hyps_tf = tf.placeholder(dtype=tf.int32, shape=(), name='num_hyps')
 
         # Add summary ops for all relevant variables for tensorboard visualization
-        if self.verbosity >0:
+        if self.verbosity > 0:
             #variable_summaries(tf.squeeze(self.sn2_unc_tf), name='noise_variance', vector=False)
-            self.debug_variables=0
+            self.debug_variables = 0
             self._debug_op = tf.summary.merge_all(key="stats_summaries")
 
         # variable_summaries(self.kernel.variance, 'kernel variance', vector=False)
@@ -797,11 +799,12 @@ class NIGP_PAC_HYP_GP(NIGP_PAC_FULL_GP_BASE):
         variables = [self.pos_trans.backward(self.kernel.lengthscale),
                      self.pos_trans.backward(self.kernel.variance),
                      self.pos_trans.backward(self.sn2),
-                     self.pos_trans.backward(self.noise_x)]
+                     self.noise_x]
         variables = flatten(variables)
         return variables
 
     def _get_bounds(self):
+        # ???
         x_min = self.pos_trans.backward(np.exp(self.min_log))
         x_max = self.pos_trans.backward(np.exp(self.max_log))
 
@@ -843,7 +846,7 @@ class NIGP_PAC_HYP_GP(NIGP_PAC_FULL_GP_BASE):
         self.kernel.variance = self.pos_trans.forward(res[1])
         self.sn2 = self.pos_trans.forward(res[2])
         # noisy input regularization matrix as variable
-        self.noise_x = self.pos_trans.forward(res[3])
+        self.noise_x = res[3]
         self.round_hyps()
 
     def _generate_optimization_ops(self):
