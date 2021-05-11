@@ -9,6 +9,10 @@ Parameters:
     var_y: output noise variance
     varf : kernal hyperparameter sigma_f
     l    : kernal hyperparameter lengthscale   or   parameter set
+    K    :
+    k1   :
+    k2   :
+
 """
 
 import numpy as np
@@ -41,10 +45,12 @@ class GPRegressor:
     # np.zeros_like(M): create zero-matrix with the same shape as M
     def predict(self, X, return_std=False):
         l = self.l
+        # [K2]: k(x, X);     [self.pred_vec]: K(X,X)+sigma_y*I + sigma_x_regularization
         self.K2 = self.kernel(X, self.X_train, np.zeros_like(X), self.var_x, l, self.varf)
+        # k(x,X) * inv( K(X,X)+sigma_y*I + sigma_x_regul ) * y
         mean = np.dot(self.K2, self.pred_vec) + self.mu
         if return_std:
-            # See equation (7) in paper NIGP
+            # See equation (7) in paper NIGP:
             std2 = np.sqrt(np.diag(
                 self.autokernel(X, np.zeros_like(X), l, self.varf) - np.dot(self.K2, np.dot(self.pred_fac, self.K2.T))))
             return mean, std2
@@ -70,7 +76,7 @@ class GPRegressor:
         l = l * np.ones(len(self.X_train[0, :])) # diagonal matrix of the kernal
         for i in range(0, len(X[0, :])):
             l2 = l[i] * l[i]  #
-            d1 = cdist(X[:, i].reshape(-1, 1), X[:, i].reshape(-1, 1), metric='sqeuclidean') # cdist: Standardized euclidean distance
+            d1 = cdist(X[:, i].reshape(-1, 1), X[:, i].reshape(-1, 1), metric='sqeuclidean') # || x-x' ||^2_2
             d2 = cdist(var_x[:, i].reshape(-1, 1), -var_x[:, i].reshape(-1, 1), metric='euclidean') # euclidean distance
             tmp += d1 / (l2 + d2)
             tmp2 *= (1.0 + d2 / l2)
@@ -94,6 +100,7 @@ class GPRegressor:
             self.mu = 0.0
         self.X_train = X_train
         self.y_train = (y_train - self.mu)
+        #
         if np.iterable(var_x):
             self.var_x = var_x
         else:
@@ -125,8 +132,11 @@ class GPRegressor:
                       ", " + str(self.alpha) + ", " + str(self.l))
             self.var_y += self.alpha
         # Calculate factors needed for prediction.
+        # K1 = K(X,X)
         self.K1 = self.autokernel(self.X_train, self.var_x, self.l, self.varf)
+        # self.pred_fac:
         self.pred_fac = np.linalg.pinv(self.K1 + np.identity(len(self.K1[:, 0])) * self.var_y)
+        # self.pred_vec:
         self.pred_vec = np.dot(self.pred_fac, self.y_train)
 
     def neg_log_marginal_likelihood(self, l):

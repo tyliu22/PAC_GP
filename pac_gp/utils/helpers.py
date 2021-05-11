@@ -142,7 +142,7 @@ def run_model(_model, metrics, X_test, Y_test, epsilon, delta, ARD,
     res = {}
     # Load "helpers -> compare() -> metric"   different model function:
     # model.get_upper_bound();       model.get_upper_bound_bkl()
-    # model.get_kl_divergence();     model.get_emperical_risk()
+    # model.get_kl_divergence();     model.get_empirical_risk()
     for mkey in metrics.keys():
         metric = metrics[mkey]
         kwargs = {'Y_true': Y_test,
@@ -216,11 +216,11 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         # random initialize noisy input matrix, shape of matrix should be the same as K_NN
-        data_dim = tf.shape(X)[0]
-        noise_x_init = tf.random_normal([data_dim, data_dim], dtype=tf.float64)
+        # data_dim = tf.shape(X)[0]
+        # noise_x_init = tf.random_normal([data_dim, data_dim], dtype=tf.float64)
 
         mean_function = Zero()
-        model = NIGP_PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init, noise_x=noise_x_init,
+        model = NIGP_PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init,
                                 epsilon=epsilon, mean_function=mean_function,
                                 delta=delta, verbosity=0, method='naive', loss=loss)
 

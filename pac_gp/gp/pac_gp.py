@@ -69,7 +69,8 @@ class PAC_GP_BASE(Configurable):
         self.epsilon = epsilon
         self.delta = delta
 
-        self.sn2 = sn2
+        self.sn2 = sn2      # What's the difference between sn2 and sn2_unc_tf, sn2_tf ??????????
+        # self.noise_x = noise_x
 
         self.jitter = np.asarray(1e-6, dtype=np.float64)
 
@@ -218,14 +219,14 @@ class PAC_GP_BASE(Configurable):
         with tf.Session() as sess:
             def objective_fcn(x):
                 feed = self._get_optimization_feed(x)
-                J = sess.run([self.objective], feed_dict=feed)
+                J = sess.run([self.objective], feed_dict=feed) # calculate self.upper_bound
                 if (self.verbosity > 0) and (self.debug_variables > 0):
                     stats = sess.run([self._debug_op], feed_dict=feed)[0]
                     self.writer_tf.add_summary(stats, self.summary_calls+1)
                     self.summary_calls += 1
                 return J
 
-            def objective_grad_fcn(x):
+            def objective_grad_fcn(x): # calculate the gradient: objective (upper bound) -> variables
                 feed = self._get_optimization_feed(x)
                 return flatten(sess.run(self.objective_grad, feed_dict=feed))
 
@@ -308,7 +309,7 @@ class PAC_GP_BASE(Configurable):
                                       shape=(None, self.input_dim),
                                       name='Xnew')
 
-        # GP hyperparameter
+        # GP hyperparameter:  What's the difference between sn2 and sn2_tf, sn2_unc_tf ??????????
         self.sn2_unc_tf = tf.placeholder(dtype=tf.float64,
                                          shape=(1, ),
                                          name='sn2_unconstrained')
@@ -324,7 +325,7 @@ class PAC_GP_BASE(Configurable):
         if self.verbosity > 0:
             #variable_summaries(tf.squeeze(self.sn2_unc_tf), name='noise_variance', vector=False)
             self.debug_variables = 0
-            self._debug_op = tf.summary.merge_all(key="stats_summaries")
+            self._debug_op = tf.summary.merge_all(key="stats_summaries") # save variable into tensorboard for debug
 
         # variable_summaries(self.kernel.variance, 'kernel variance', vector=False)
 
@@ -511,7 +512,6 @@ class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
 
 # Actual PAC GP implementations based on the base classes above
 # These classes should be instantiated
-
 
 class PAC_HYP_GP(PAC_FULL_GP_BASE):
     """ Full GP optimizing kernel hyperparameters

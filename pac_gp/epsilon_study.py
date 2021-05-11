@@ -119,7 +119,7 @@ if __name__ == '__main__':
                         default=True)
     parser.add_argument('-d', '--dataset', default='boston')
     parser.add_argument('-a', '--ARD', help='use ARD', action='store_true',
-                        default=False)
+                        default=True)
     parser.add_argument('-t', '--test_size', help='testsize in [0.0, 1.0]',
                         default=0.2)
     parser.add_argument('-n', '--n_reps', help='number of repetitions',

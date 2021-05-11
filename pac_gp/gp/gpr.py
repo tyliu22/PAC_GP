@@ -246,7 +246,8 @@ class NIGPR:
         self.X = X
         self.Y = Y
 
-        self.sn2 = sn2
+        # Here, sn2 is the same as the defined parameter (tf.placeholder) self.sn2_tf
+        self.sn2 = sn2 # What's the difference between sn2 and sn2_unc_tf, sn2_tf ??????????
         self.noise_x = noise_x
 
         self.kern = kern
