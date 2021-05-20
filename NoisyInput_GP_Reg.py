@@ -70,16 +70,17 @@ class GPRegressor:
             tmp2 *= (1.0 + d2 / l2)
         return varf * np.power(tmp2, -0.5) * np.exp(-0.5 * tmp)
 
-    def autokernel(self, X, var_x, l, varf): # K(X,X)  self kernal
+    def autokernel(self, X, var_x, l, varf): # (self.X_train, self.var_x, l, varf)
+        # Equation 9 in NIGP
         tmp = 0.0
         tmp2 = 1.0
         l = l * np.ones(len(self.X_train[0, :])) # diagonal matrix of the kernal
         for i in range(0, len(X[0, :])):
             l2 = l[i] * l[i]  #
-            d1 = cdist(X[:, i].reshape(-1, 1), X[:, i].reshape(-1, 1), metric='sqeuclidean') # || x-x' ||^2_2
-            d2 = cdist(var_x[:, i].reshape(-1, 1), -var_x[:, i].reshape(-1, 1), metric='euclidean') # euclidean distance
-            tmp += d1 / (l2 + d2)
-            tmp2 *= (1.0 + d2 / l2)
+            d1 = cdist(X[:, i].reshape(-1, 1), X[:, i].reshape(-1, 1), metric='sqeuclidean') # ||x-x'||^2_2  (N*N)
+            d2 = cdist(var_x[:, i].reshape(-1, 1), -var_x[:, i].reshape(-1, 1), metric='euclidean') # (N*N)
+            tmp += d1 / (l2 + d2) # (N*N)
+            tmp2 *= (1.0 + d2 / l2) # (N*N)
         return varf * np.power(tmp2, -0.5) * np.exp(-0.5 * tmp)
 
         # X_train - Input data (num_samples, num_features)
@@ -125,8 +126,8 @@ class GPRegressor:
                 # res: final optimized parameters; l0 is the initialize parameter
                 if res['fun'] < best_f:
                     self.varf = res['x'][0]    # output variance
-                    self.alpha = res['x'][1]   # inout noise introduced variance, total variance
-                    self.l = res['x'][2::]     #  lengthscale parameter for kernal
+                    self.alpha = res['x'][1]   # input noise introduced variance, total variance
+                    self.l = res['x'][2::]     # lengthscale parameter for kernal
                     self.opt_params = res['x'] #
                 print("iter: " + str(j) + ". params: " + "Output variance：" + str(self.varf) +
                       ", " + str(self.alpha) + ", " + str(self.l))
@@ -153,13 +154,12 @@ class GPRegressor:
                + 0.5 * len(K[:, 0]) * np.log(2 * math.pi)
 
 
-##Example insipired from 'Learning Gaussian Process Models from Uncertain Data', Dallaire.
+## Example insipired from 'Learning Gaussian Process Models from Uncertain Data', Dallaire.
 if __name__ == "__main__":
     def sincsig(x):
         return (x >= 0) * np.sinc(x / math.pi) + (x < 0) * (0.5 * (1 + np.exp(-10 * x - 5)) ** (-1) + 0.5)
 
-
-    X_train = np.random.random((150, 1)) * 20.0 - 10.0
+    X_train = np.random.random((150, 1)) * 20.0 - 10.0 # generate 150 data points from interval [-10, 10]
     y_train = sincsig(X_train[:, 0])
 
     X_std = np.random.random(X_train.shape) * 2.0 + 0.5
