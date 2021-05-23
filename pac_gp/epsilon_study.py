@@ -16,6 +16,7 @@ import pandas as pd
 import os
 import argparse
 from sklearn import preprocessing
+import tensorflow as tf
 
 import utils.plotting as plotting
 import utils.load_dataset as load_dataset
@@ -51,6 +52,14 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     Y = preprocessing.scale(Y)
     F = X.shape[1]
 
+    # noise_var_train = np.zeros((F, 1)) + 1
+    # np.random.normal(0.0, noise_var_train, 500)
+    noise_x_variance = 1.0
+    noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
+    noise_x_covariance = np.eye(F) * noise_x_variance
+
+
+
     data = []
     for i in range(n_repetitions):
         # vary epsilon
@@ -58,9 +67,9 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
 
             if nInd == 0:
                 # exact GP
-                print('Start running exact full GP')
+                print('Start running exact NIGP_sqrt-PAC HYP GP')
 
-                print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
+                # print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
                 RV_naive_NIGP = helpers.compare(X, Y, 'NIGP_sqrt-PAC HYP GP', seed=i,
                                            test_size=test_size, ARD=ARD,
                                            epsilon=epsilon, loss=loss)
@@ -77,9 +86,10 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
                 # RV_gpflow = helpers.compare(X, Y, 'GPflow Full GP', seed=i,
                 #                             test_size=test_size, ARD=ARD,
                 #                             epsilon=epsilon, loss=loss)
-                # RVs = [RV_naive_NIGP, RV_pac, RV_naive, RV_gpflow]
+                # RVs = [RV_pac, RV_naive, RV_gpflow]
+
                 RVs = [RV_naive_NIGP]
-                print('End exact full GP')
+                print('End exact NIGP_sqrt-PAC HYP GP')
 
             else:
                 # sparse GP
@@ -103,7 +113,6 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
                 RVs = [RV_vfe, RV_fitc, RV_pac, RV_pac2]
                 print('End sparse GP')
 
-
             for RV in RVs:
                 data += RV
 
@@ -123,7 +132,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--test_size', help='testsize in [0.0, 1.0]',
                         default=0.2)
     parser.add_argument('-n', '--n_reps', help='number of repetitions',
-                        default=10)
+                        default=1)
     parser.add_argument('-m', '--nInd', help='number of inducing points',
                         default=0)
     parser.add_argument('-l', '--loss', help='loss function',

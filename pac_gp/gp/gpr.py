@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import tensorflow as tf
-
+import numpy as np
 from gp.mean_functions import Zero
 from gp.conditionals import feature_conditional
 
@@ -236,7 +236,7 @@ class NIGPR:
 
     Implementation of full GP regression following GPflow implementation
     """
-    def __init__(self, X, Y, sn2, noise_x, kern, mean_function=None):
+    def __init__(self, X, Y, sn2, kern, mean_function=None):
         """
         X is a data matrix, size N x D
         Y is a data matrix, size N x R
@@ -248,7 +248,7 @@ class NIGPR:
 
         # Here, sn2 is the same as the defined parameter (tf.placeholder) self.sn2_tf
         self.sn2 = sn2 # What's the difference between sn2 and sn2_unc_tf, sn2_tf ??????????
-        self.noise_x = noise_x
+        # self.noise_x = noise_x
 
         self.kern = kern
         self.mean_function = mean_function or Zero()
@@ -257,6 +257,37 @@ class NIGPR:
         self.D = tf.shape(X)[1]   # Input dimensionality
         self.R = tf.shape(Y)[1]   # Output dimensionality
         self.jitter = 1e-06
+
+    # def _build_predict_f(self, Xnew, full_cov=True):
+    #     """
+    #     Compute the mean and variance of the latent function at some new points
+    #     Xnew.
+    #     jitter = 1e-06 : to prevent zero matrix
+    #     """
+    #     N = tf.shape(self.X)[0]
+    #
+    #     Kx = self.kern.K(self.X, Xnew) # if no Xnew, then Kx=K : k_N
+    #     K = self.kern.K(self.X) # K_NN
+    #
+    #     # For the standard GP, (K_NN + sigma_n * I)
+    #     # For the NIGP, (K_NN + sigma_n * I + noise_x_reg); noise_x_reg represents first-order approximation regularization item
+    #     # K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter)
+    #     K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter) + tf.matmul(self.noise_x, tf.transpose(self.noise_x))
+    #
+    #     L = tf.cholesky(K)  # L = chol(K_NN + sigma_n * I);
+    #     A = tf.matrix_triangular_solve(L, Kx, lower=True) # inv(L) * k_N(x)
+    #     V = tf.matrix_triangular_solve(L, self.Y - self.mean_function(self.X)) # inv(L) * (y_N-m_N)
+    #     # NIGP f_mean = m(x) + k_N(x) * inv(K_NN + sigma_n * I) * (y_N-m_N)
+    #     fmean = tf.matmul(A, V, transpose_a=True) + self.mean_function(Xnew)
+    #     if full_cov:
+    #         # NIGP f_var = K(x,x_new) + k_N(x) * inklv(K_NN + sigma_n * I) * k_N(x_new)
+    #         fvar = self.kern.K(Xnew) - tf.matmul(A, A, transpose_a=True) #
+    #         shape = tf.stack([1, 1, tf.shape(self.Y)[1]])
+    #         fvar = tf.tile(tf.expand_dims(fvar, 2), shape)
+    #     else:
+    #         fvar = self.kern.Kdiag(Xnew) - tf.reduce_sum(tf.square(A), 0)
+    #         fvar = tf.tile(tf.reshape(fvar, (-1, 1)), [1, tf.shape(self.Y)[1]])
+    #     return fmean, fvar
 
     def _build_predict_f(self, Xnew, full_cov=True):
         """
@@ -272,16 +303,35 @@ class NIGPR:
         # For the standard GP, (K_NN + sigma_n * I)
         # For the NIGP, (K_NN + sigma_n * I + noise_x_reg); noise_x_reg represents first-order approximation regularization item
         # K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter)
-        K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter) + tf.matmul(self.noise_x, tf.transpose(self.noise_x))
+        K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter)
 
         L = tf.cholesky(K)  # L = chol(K_NN + sigma_n * I);
         A = tf.matrix_triangular_solve(L, Kx, lower=True) # inv(L) * k_N(x)
         V = tf.matrix_triangular_solve(L, self.Y - self.mean_function(self.X)) # inv(L) * (y_N-m_N)
         # NIGP f_mean = m(x) + k_N(x) * inv(K_NN + sigma_n * I) * (y_N-m_N)
         fmean = tf.matmul(A, V, transpose_a=True) + self.mean_function(Xnew)
+
+
+
+
+
+        # calculate the deriavative of mean function
+        input_noise_variance = tf.zeros(shape=(self.X.shape[1], self.X.shape[1]), dtype=tf.float64)
+        grad_posterior_mean = tf.gradients(fmean, self.X)[0]
+        regu_item = tf.matmul( tf.matmul(grad_posterior_mean, input_noise_variance), tf.transpose(grad_posterior_mean))
+        regu_diag_item = tf.matrix_diag(tf.matrix_diag_part(regu_item))
+        K += regu_diag_item
+
+
+        L = tf.cholesky(K)  # L = chol(K_NN + sigma_n * I + partial_f*Sigam_x*partial_f);
+        A = tf.matrix_triangular_solve(L, Kx, lower=True) # inv(L) * k_N(x)
+        V = tf.matrix_triangular_solve(L, self.Y - self.mean_function(self.X)) # inv(L) * (y_N-m_N)
+        # NIGP f_mean = m(x) + k_N(x) * inv(K_NN + sigma_n * I) * (y_N-m_N)
+        fmean = tf.matmul(A, V, transpose_a=True) + self.mean_function(Xnew)
+
         if full_cov:
             # NIGP f_var = K(x,x_new) + k_N(x) * inklv(K_NN + sigma_n * I) * k_N(x_new)
-            fvar = self.kern.K(Xnew) - tf.matmul(A, A, transpose_a=True) #
+            fvar = self.kern.K(Xnew) - tf.matmul(A, A, transpose_a=True)
             shape = tf.stack([1, 1, tf.shape(self.Y)[1]])
             fvar = tf.tile(tf.expand_dims(fvar, 2), shape)
         else:
