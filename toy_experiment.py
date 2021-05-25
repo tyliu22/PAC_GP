@@ -57,12 +57,12 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
 
 
 
-    X = np.arange(-20, 20, 0.1).reshape(-1, 1)
+    X = np.arange(-10, 10, 0.05).reshape(-1, 1)
     # X_train = np.array([-4, -3, -2, -1, 1]).reshape(-1, 1)
     Y = np.sin(X)
 
     F = X.shape[1]
-    noise_x_variance = 0.5
+    noise_x_variance = 1.0
     noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
     noise_x_covariance = np.eye(F) * noise_x_variance
 
