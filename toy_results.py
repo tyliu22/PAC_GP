@@ -40,26 +40,36 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     """
 
     # load data
-    X, y = load_dataset.load(dataset_name)
-    Y = y[:, np.newaxis]
-
-    print(dataset_name)
-    print(X.shape)
-    print(Y.shape)
-
-    # scale to zero mean and unit variance
-    X = preprocessing.scale(X)
-    Y = preprocessing.scale(Y)
-    F = X.shape[1]
+    # X, y = load_dataset.load(dataset_name)
+    # Y = y[:, np.newaxis]
+    #
+    # print(dataset_name)
+    # print(X.shape)
+    # print(Y.shape)
+    #
+    # # scale to zero mean and unit variance
+    # X = preprocessing.scale(X)
+    # Y = preprocessing.scale(Y)
+    # F = X.shape[1]
 
     # noise_var_train = np.zeros((F, 1)) + 1
     # np.random.normal(0.0, noise_var_train, 500)
+
+
+
+    X = np.arange(-20, 20, 0.1).reshape(-1, 1)
+    # X_train = np.array([-4, -3, -2, -1, 1]).reshape(-1, 1)
+    Y = np.sin(X)
+
+    F = X.shape[1]
     noise_x_variance = 0.5
     noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
     noise_x_covariance = np.eye(F) * noise_x_variance
 
     X_original = X
     X_noise = X + noise_x
+
+
 
     data = []
     for i in range(n_repetitions):
@@ -186,3 +196,17 @@ if __name__ == '__main__':
         # plt.savefig(fn_png)
         # plt.savefig(fn_pdf)
         # plt.close()
+
+
+def plot_gp(mu, cov, X, X_train=None, Y_train=None, samples=[]):
+    X = X.ravel()
+    mu = mu.ravel()
+    uncertainty = 1.96 * np.sqrt(np.diag(cov))  # 95%的置信区间
+
+    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1)
+    plt.plot(X, mu, label='Mean')
+    for i, sample in enumerate(samples):
+        plt.plot(X, sample, lw=2, ls='--', label=f'Sample{i + 1}')  # lw is the width of curve
+    if X_train is not None:
+        plt.plot(X_train, Y_train, 'rx')
+    plt.legend()

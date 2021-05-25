@@ -598,6 +598,8 @@ class PAC_HYP_GP(PAC_FULL_GP_BASE):
         self.objective_grad = tf.gradients(self.objective, variables)
 
 
+
+
 class PAC_INDUCING_GP(PAC_SPARSE_GP_BASE):
     """ FITC sparse GP optimizing inducing inputs
     """
@@ -745,6 +747,8 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
             self.debug_variables += 1
             # Common op to run all variable summaries
             self._debug_op = tf.summary.merge_all(key="stats_summaries")
+
+
 
 
 

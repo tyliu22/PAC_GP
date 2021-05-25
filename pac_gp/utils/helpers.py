@@ -111,7 +111,7 @@ def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
         return 1.
 
 
-def run_model(_model, metrics, X_test, Y_test, epsilon, delta, ARD,
+def run_model(_model, metrics, X_noise_test, Y_test, X_origin_test, epsilon, delta, ARD,
               loss='01_loss'):
     """
     running model
@@ -135,8 +135,8 @@ def run_model(_model, metrics, X_test, Y_test, epsilon, delta, ARD,
                                 loss=loss)
 
     # predict
-    ymean_hat, yvar_hat = model.predict(X_test, full_cov=False)
-    fmean_hat, fvar_hat = model.predict_noiseless(X_test, full_cov=False)
+    ymean_hat, yvar_hat = model.predict(X_origin_test, full_cov=False)
+    fmean_hat, fvar_hat = model.predict_noiseless(X_origin_test, full_cov=False)
 
     # compute evaluation metrics
     res = {}
@@ -175,7 +175,7 @@ def init_inducing_points(X, m):
     return Z_init
 
 
-def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
+def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0.01, epsilon=0.2,
                 nInd=None, suffix='', loss='01_loss'):
     """
     setting up model
@@ -193,13 +193,13 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
     nInd        :       number of inducing points
     loss        :       {01_loss, inv_gauss}
     """
-    F = X.shape[1]
+    F = X_origin_train.shape[1]
 
     if model_name == 'bkl-PAC HYP GP':
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)
         mean_function = Zero()
-        model = PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init,
+        model = PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
                            epsilon=epsilon, mean_function=mean_function,
                            delta=delta, verbosity=0, loss=loss)
 
@@ -207,7 +207,7 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         mean_function = Zero()
-        model = PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init,
+        model = PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
                            epsilon=epsilon, mean_function=mean_function,
                            delta=delta, verbosity=0, method='naive', loss=loss)
 
@@ -220,26 +220,26 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
         # noise_x_init = tf.random_normal([data_dim, data_dim], dtype=tf.float64)
 
         mean_function = Zero()
-        model = NIGP_PAC_HYP_GP(X=X, Y=Y, kernel=kern, sn2=sn2_init,
+        model = NIGP_PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
                                 epsilon=epsilon, mean_function=mean_function,
                                 delta=delta, verbosity=0, method='naive', loss=loss)
 
     elif model_name == 'bkl-PAC Inducing Hyp GP':
-        Z = init_inducing_points(X, nInd)
+        Z = init_inducing_points(X_noise_train, nInd)
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         mean_function = Zero()
-        model = PAC_INDUCING_HYP_GP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
+        model = PAC_INDUCING_HYP_GP(X=X_noise_train, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
                                     epsilon=epsilon,
                                     mean_function=mean_function,
                                     delta=delta, verbosity=0, loss=loss)
 
     elif model_name == 'sqrt-PAC Inducing Hyp GP':
-        Z = init_inducing_points(X, nInd)
+        Z = init_inducing_points(X_noise_train, nInd)
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
         mean_function = Zero()
-        model = PAC_INDUCING_HYP_GP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
+        model = PAC_INDUCING_HYP_GP(X=X_noise_train, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
                                     epsilon=epsilon,
                                     mean_function=mean_function,
                                     delta=delta, verbosity=0, method='naive',
@@ -247,31 +247,34 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
 
     elif model_name == 'GPflow Full GP':
         kern = gpflow.kernels.RBF(F, ARD=ARD)
-        _model = gpflow.models.GPR(X, Y, kern)
+        _model = gpflow.models.GPR(X_noise_train, Y, kern)
         model = gpflow_wrapper.GPflowFullWrapper(_model)
 
     elif model_name == 'GPflow VFE':
-        Z = init_inducing_points(X, nInd)
+        Z = init_inducing_points(X_noise_train, nInd)
         kern = gpflow.kernels.RBF(F, ARD=ARD)
-        _model = gpflow.models.SGPR(X, Y, kern, Z)
+        _model = gpflow.models.SGPR(X_noise_train, Y, kern, Z)
         model = gpflow_wrapper.GPflowSparseWrapper(_model)
 
     elif model_name == 'GPflow FITC':
-        Z = init_inducing_points(X, nInd)
+        Z = init_inducing_points(X_noise_train, nInd)
         kern = gpflow.kernels.RBF(F, ARD=ARD)
-        _model = gpflow.models.GPRFITC(X, Y, kern, Z)
+        _model = gpflow.models.GPRFITC(X_noise_train, Y, kern, Z)
         model = gpflow_wrapper.GPflowSparseWrapper(_model)
 
     return model
 
 
-def compare(X, Y, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
+def compare(X_noise, Y, X_original, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
             epsilon=0.2, nInd=None, suffix='', loss='01_loss'):
         """
         running and evaluating model
 
         input
         X           :       data points
+        X_noise     :       noisy data points
+        X_origin    :       original clear data points
+
         Y           :       outcome
         model_name  :       model name in {bkl-PAC HYP GP, sqrt-PAC HYP GP,
                             bkl-PAC Inducing Hyp GP, sqrt-PAC Inducing Hyp GP,
@@ -301,16 +304,16 @@ def compare(X, Y, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
                   'sigma squared': lambda model, **extra: model.sn2[0]}
 
         # split into training and test data
-        rv = train_test_split(X, Y, random_state=seed, test_size=test_size)
-        X_train, X_test, Y_train, Y_test = rv
+        rv = train_test_split(X_noise, Y, X_original, random_state=seed, test_size=test_size)
+        X_noise_train, X_noise_test, Y_train, Y_test, X_origin_train, X_origin_test = rv
 
         # running model
         Ntest = Y_test.shape[0]
         N = Y_train.shape[0]
         t0 = time.time()
-        model = build_model(model_name, X_train, Y_train, ARD=ARD, delta=delta,
+        model = build_model(model_name, X_noise_train, Y_train, X_origin_train, ARD=ARD, delta=delta,
                             epsilon=epsilon, nInd=nInd, suffix='', loss=loss)
-        RV = run_model(model, metric, X_test, Y_test, epsilon, delta, ARD,
+        RV = run_model(model, metric, X_noise_test, Y_test, X_origin_test, epsilon, delta, ARD,
                        loss=loss)
         t1 = time.time()
         t_diff = t1 - t0
