@@ -56,7 +56,7 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     # np.random.normal(0.0, noise_var_train, 500)
 
 
-
+    # Generate data
     X = np.arange(-10, 10, 0.05).reshape(-1, 1)
     # X_train = np.array([-4, -3, -2, -1, 1]).reshape(-1, 1)
     Y = np.sin(X)
@@ -80,24 +80,31 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
             if nInd == 0:
                 # exact GP
 
-                # print('Start running exact NIGP_sqrt-PAC HYP GP')
-                # print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
+                print('Start running:')
+                print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
                 # RV_naive_NIGP = helpers.compare(X_noise, Y, X_original, 'NIGP_sqrt-PAC HYP GP', seed=i,
                 #                            test_size=test_size, ARD=ARD,
-                #                            epsilon=epsilon, loss=loss)
+                #                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
 
-                print('Full GP Algorithm: sqrt-PAC HYP GP')
                 RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
                                            test_size=test_size, ARD=ARD,
-                                           epsilon=epsilon, loss=loss)
+                                           epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
+
+
+                # print('Full GP Algorithm: sqrt-PAC HYP GP')
+                # RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
+                #                            test_size=test_size, ARD=ARD,
+                #                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
+
                 print('Full GP Algorithm: bkl-PAC HYP GP')
                 RV_pac = helpers.compare(X_noise, Y, X_original, 'bkl-PAC HYP GP', seed=i,
                                          test_size=test_size, ARD=ARD,
-                                         epsilon=epsilon, loss=loss)
+                                         epsilon=epsilon, loss=loss, noise_input_variance=noise_x_variance)
                 print('Full GP Algorithm: GPflow Full GP')
                 RV_gpflow = helpers.compare(X_noise, Y, X_original, 'GPflow Full GP', seed=i,
                                             test_size=test_size, ARD=ARD,
-                                            epsilon=epsilon, loss=loss)
+                                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
+                # RVs = [RV_pac, RV_naive, RV_gpflow]
                 RVs = [RV_pac, RV_naive, RV_gpflow]
 
                 # RVs = [RV_naive_NIGP]

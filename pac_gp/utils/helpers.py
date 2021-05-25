@@ -112,7 +112,7 @@ def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
 
 
 def run_model(_model, metrics, X_noise_test, Y_test, X_origin_test, epsilon, delta, ARD,
-              loss='01_loss'):
+              loss='01_loss', noise_input_variance=None):
     """
     running model
 
@@ -176,7 +176,7 @@ def init_inducing_points(X, m):
 
 
 def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0.01, epsilon=0.2,
-                nInd=None, suffix='', loss='01_loss'):
+                nInd=None, suffix='', loss='01_loss', noise_input_variance=None):
     """
     setting up model
 
@@ -201,7 +201,7 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
         mean_function = Zero()
         model = PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
                            epsilon=epsilon, mean_function=mean_function,
-                           delta=delta, verbosity=0, loss=loss)
+                           delta=delta, verbosity=0, loss=loss, noise_input_variance=None)
 
     elif model_name == 'sqrt-PAC HYP GP':
         kern = kerns.RBF(input_dim=F, ARD=ARD)
@@ -209,7 +209,7 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
         mean_function = Zero()
         model = PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
                            epsilon=epsilon, mean_function=mean_function,
-                           delta=delta, verbosity=0, method='naive', loss=loss)
+                           delta=delta, verbosity=0, method='naive', loss=loss, noise_input_variance=None)
 
     elif model_name == 'NIGP_sqrt-PAC HYP GP':
         # change to another kernal: NIGP kernal which consider the noise input regularization item as variable
@@ -222,7 +222,7 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
         mean_function = Zero()
         model = NIGP_PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
                                 epsilon=epsilon, mean_function=mean_function,
-                                delta=delta, verbosity=0, method='naive', loss=loss)
+                                delta=delta, verbosity=0, method='naive', loss=loss, noise_input_variance=None)
 
     elif model_name == 'bkl-PAC Inducing Hyp GP':
         Z = init_inducing_points(X_noise_train, nInd)
@@ -232,7 +232,7 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
         model = PAC_INDUCING_HYP_GP(X=X_noise_train, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
                                     epsilon=epsilon,
                                     mean_function=mean_function,
-                                    delta=delta, verbosity=0, loss=loss)
+                                    delta=delta, verbosity=0, loss=loss, noise_input_variance=None)
 
     elif model_name == 'sqrt-PAC Inducing Hyp GP':
         Z = init_inducing_points(X_noise_train, nInd)
@@ -243,7 +243,7 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
                                     epsilon=epsilon,
                                     mean_function=mean_function,
                                     delta=delta, verbosity=0, method='naive',
-                                    loss=loss)
+                                    loss=loss, noise_input_variance=None)
 
     elif model_name == 'GPflow Full GP':
         kern = gpflow.kernels.RBF(F, ARD=ARD)
@@ -266,7 +266,7 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
 
 
 def compare(X_noise, Y, X_original, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
-            epsilon=0.2, nInd=None, suffix='', loss='01_loss'):
+            epsilon=0.2, nInd=None, suffix='', loss='01_loss', noise_input_variance=None):
         """
         running and evaluating model
 
@@ -312,9 +312,9 @@ def compare(X_noise, Y, X_original, model_name, seed, delta=0.01, test_size=0.2,
         N = Y_train.shape[0]
         t0 = time.time()
         model = build_model(model_name, X_noise_train, Y_train, X_origin_train, ARD=ARD, delta=delta,
-                            epsilon=epsilon, nInd=nInd, suffix='', loss=loss)
+                            epsilon=epsilon, nInd=nInd, suffix='', loss=loss, noise_input_variance=noise_input_variance)
         RV = run_model(model, metric, X_noise_test, Y_test, X_origin_test, epsilon, delta, ARD,
-                       loss=loss)
+                       loss=loss, noise_input_variance=noise_input_variance)
         t1 = time.time()
         t_diff = t1 - t0
 

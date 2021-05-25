@@ -51,7 +51,7 @@ class PAC_GP_BASE(Configurable):
 
     def __init__(self, X, Y, sn2, kernel=None, mean_function=None,
                  epsilon=0.2, delta=0.01, verbosity=0, method='bkl',
-                 loss='01_loss'):
+                 loss='01_loss', noise_input_variance=None):
 
         assert X.ndim == 2
         assert Y.ndim == 2
@@ -70,7 +70,7 @@ class PAC_GP_BASE(Configurable):
         self.delta = delta
 
         self.sn2 = sn2      # What's the difference between sn2 and sn2_unc_tf, sn2_tf ??????????
-        # self.noise_x = noise_x
+        self.noise_input_variance = noise_input_variance
 
         self.jitter = np.asarray(1e-6, dtype=np.float64)
 
@@ -760,9 +760,13 @@ class NIGP_PAC_FULL_GP_BASE(PAC_GP_BASE):
         super(NIGP_PAC_FULL_GP_BASE, self).__init__(*args, **kwargs)
 
     def _generate_gp_ops(self):
+        # ****************************************************************************** #
+        # C alculate the noisy input regularization item
+        # ****************************************************************************** #
         # Set up NIGP model: self_noise_x is the noisy input regularization term
         self.gp = NIGPR(self.X_tf, self.Y_tf, self.sn2_tf,
-                        self.kernel, self.mean_function)
+                        self.kernel, self.mean_function, self.noise_input_variance)
+        # ****************************************************************************** #
 
         # P: GP prior (based on training data X)
         self.P_mean = self.mean_function(self.X_tf)    # (num_data, output_dim)

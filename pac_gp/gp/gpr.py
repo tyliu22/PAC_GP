@@ -236,7 +236,7 @@ class NIGPR:
 
     Implementation of full GP regression following GPflow implementation
     """
-    def __init__(self, X, Y, sn2, kern, mean_function=None):
+    def __init__(self, X, Y, sn2, kern, mean_function=None, noise_input_variance=None):
         """
         X is a data matrix, size N x D
         Y is a data matrix, size N x R
@@ -252,6 +252,8 @@ class NIGPR:
 
         self.kern = kern
         self.mean_function = mean_function or Zero()
+
+        self.noise_input_variance = noise_input_variance
 
         self.N = tf.shape(X)[0]   # Number of data points
         self.D = tf.shape(X)[1]   # Input dimensionality
@@ -313,14 +315,17 @@ class NIGPR:
 
 
 
-
-
+        # ****************************************************************************** #
         # calculate the deriavative of mean function
-        input_noise_variance = tf.zeros(shape=(self.X.shape[1], self.X.shape[1]), dtype=tf.float64)
+        # ****************************************************************************** #
+        if self.noise_input_variance == None:
+            self.input_noise_variance = tf.zeros(shape=(self.X.shape[1], self.X.shape[1]), dtype=tf.float64)
         grad_posterior_mean = tf.gradients(fmean, self.X)[0]
-        regu_item = tf.matmul( tf.matmul(grad_posterior_mean, input_noise_variance), tf.transpose(grad_posterior_mean))
+        regu_item = tf.matmul( tf.matmul(grad_posterior_mean, self.input_noise_variance), tf.transpose(grad_posterior_mean))
         regu_diag_item = tf.matrix_diag(tf.matrix_diag_part(regu_item))
         K += regu_diag_item
+
+
 
 
         L = tf.cholesky(K)  # L = chol(K_NN + sigma_n * I + partial_f*Sigam_x*partial_f);
