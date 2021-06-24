@@ -18,7 +18,7 @@ Copyright 2017 st--, Mark van der Wilk, licensed under the Apache
 License, Version 2.0, cf. 3rd-party-licenses.txt file in the root directory
 of this source tree.
 """
-
+# change to niosy input Gaussian process ????
 
 def feature_conditional(Xnew, Z, kern, f, full_cov=False,
                         q_sqrt=None, jitter=1e-6):

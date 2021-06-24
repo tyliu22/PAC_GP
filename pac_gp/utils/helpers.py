@@ -52,6 +52,7 @@ def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
     loss        :       {01_loss, inv_gauss}
 
     issubclass(class, classinfo):    if class is the subclass of classinfo, then return True, otherwise return False
+                                     "class" inherits "classinfo" method
     """
 
     if issubclass(type(model), PAC_GP_BASE):
@@ -141,7 +142,7 @@ def run_model(_model, metrics, X_noise_test, Y_test, X_origin_test, epsilon, del
     # compute evaluation metrics
     res = {}
     # Load "helpers -> compare() -> metric"   different model function:
-    # model.get_upper_bound();       model.get_upper_bound_bkl()
+    # model.get_upper_bound()  ;     model.get_upper_bound_bkl()
     # model.get_kl_divergence();     model.get_empirical_risk()
     for mkey in metrics.keys():
         metric = metrics[mkey]
@@ -305,6 +306,7 @@ def compare(X_noise, Y, X_original, model_name, seed, delta=0.01, test_size=0.2,
 
         # split into training and test data
         rv = train_test_split(X_noise, Y, X_original, random_state=seed, test_size=test_size)
+        # noise input setting: three parts
         X_noise_train, X_noise_test, Y_train, Y_test, X_origin_train, X_origin_test = rv
 
         # running model

@@ -16,6 +16,7 @@ class GPflowWrapper():
         self.model = model
 
     def optimize(self):
+        # minimize method, now change to gpflow.optimizers.Scipy in new version
         opt = gpflow.train.ScipyOptimizer()
         opt.minimize(self.model)
 

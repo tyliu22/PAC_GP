@@ -32,6 +32,7 @@ class RBF:
                 # 1) individual lengthscale for each dimension
                 # or 2) one lengthscale for all dimensions
                 lengthscale = np.asarray(lengthscale, dtype=np.float64)
+                # atleast_1d(): Scalar inputs are converted to 1-dimensional arrays, whilst higher-dimensional inputs are preserved.
                 lengthscale = np.atleast_1d(lengthscale)
 
                 assert_msg = 'Bad number of lengthscale dimensions'
@@ -95,10 +96,10 @@ class RBF:
 
 
 
-
-
-
+# ??? NIGP and GP should have the same kernel RBF
+# just calculate the derivative of mean function
 class NIGP_RBF:
+    # Need to calculate the derivative of mean function
     def __init__(self, input_dim, variance=1.0, lengthscale=None, ARD=True):
         with tf.name_scope('kern'):
 

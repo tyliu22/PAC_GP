@@ -291,7 +291,7 @@ class NIGPR:
     #         fvar = tf.tile(tf.reshape(fvar, (-1, 1)), [1, tf.shape(self.Y)[1]])
     #     return fmean, fvar
 
-    def _build_predict_f(self, Xnew, full_cov=True):
+    def _build_predict_f(self, Xnew, full_cov=True, noise_input_variance=None):
         """
         Compute the mean and variance of the latent function at some new points
         Xnew.
@@ -313,15 +313,16 @@ class NIGPR:
         # NIGP f_mean = m(x) + k_N(x) * inv(K_NN + sigma_n * I) * (y_N-m_N)
         fmean = tf.matmul(A, V, transpose_a=True) + self.mean_function(Xnew)
 
-
-
         # ****************************************************************************** #
         # calculate the deriavative of mean function
         # ****************************************************************************** #
         if self.noise_input_variance == None:
+            print('initial input_noise_variance')
             self.input_noise_variance = tf.zeros(shape=(self.X.shape[1], self.X.shape[1]), dtype=tf.float64)
+        self.input_noise_variance = tf.zeros(shape=(self.X.shape[1], self.X.shape[1]), dtype=tf.float64) + 2.0
         grad_posterior_mean = tf.gradients(fmean, self.X)[0]
         regu_item = tf.matmul( tf.matmul(grad_posterior_mean, self.input_noise_variance), tf.transpose(grad_posterior_mean))
+        print(regu_item)
         regu_diag_item = tf.matrix_diag(tf.matrix_diag_part(regu_item))
         K += regu_diag_item
 

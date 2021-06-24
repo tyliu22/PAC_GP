@@ -156,11 +156,15 @@ class GPRegressor:
 
 ## Example insipired from 'Learning Gaussian Process Models from Uncertain Data', Dallaire.
 if __name__ == "__main__":
+    # def sincsig(x):
+    #     return (x >= 0) * np.sinc(x / math.pi) + (x < 0) * (0.5 * (1 + np.exp(-10 * x - 5)) ** (-1) + 0.5)
+
     def sincsig(x):
-        return (x >= 0) * np.sinc(x / math.pi) + (x < 0) * (0.5 * (1 + np.exp(-10 * x - 5)) ** (-1) + 0.5)
+        return np.sin(x)
 
     X_train = np.random.random((150, 1)) * 20.0 - 10.0 # generate 150 data points from interval [-10, 10]
     y_train = sincsig(X_train[:, 0])
+    # y_train = sincsig(X_train[:, 0])
 
     X_std = np.random.random(X_train.shape) * 2.0 + 0.5
     y_std = 0.1 * np.ones_like(y_train)

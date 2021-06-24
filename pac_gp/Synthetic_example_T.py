@@ -40,26 +40,36 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     """
 
     # load data
-    X, y = load_dataset.load(dataset_name)
-    Y = y[:, np.newaxis]
-
-    print(dataset_name)
-    print(X.shape)
-    print(Y.shape)
-
-    # scale to zero mean and unit variance
-    X = preprocessing.scale(X)
-    Y = preprocessing.scale(Y)
-    F = X.shape[1]
+    # X, y = load_dataset.load(dataset_name)
+    # Y = y[:, np.newaxis]
+    #
+    # print(dataset_name)
+    # print(X.shape)
+    # print(Y.shape)
+    #
+    # # scale to zero mean and unit variance
+    # X = preprocessing.scale(X)
+    # Y = preprocessing.scale(Y)
+    # F = X.shape[1]
 
     # noise_var_train = np.zeros((F, 1)) + 1
     # np.random.normal(0.0, noise_var_train, 500)
-    # noise_x_variance = 0.5
-    # noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
-    # noise_x_covariance = np.eye(F) * noise_x_variance
-    #
-    # X_original = X
-    # X_noise = X + noise_x
+
+
+    # Generate data
+    X = np.arange(-10, 10, 0.05).reshape(-1, 1)
+    # X_train = np.array([-4, -3, -2, -1, 1]).reshape(-1, 1)
+    Y = np.sin(X)
+
+    F = X.shape[1]
+    noise_x_variance = 2.0
+    noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
+    noise_x_covariance = np.eye(F) * noise_x_variance
+
+    X_original = X
+    X_noise = X + noise_x
+
+
 
     data = []
     for i in range(n_repetitions):
@@ -70,25 +80,13 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
             if nInd == 0:
                 # exact GP
 
-                # print('Start running exact NIGP_sqrt-PAC HYP GP')
-                # print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
-                # RV_naive_NIGP = helpers.compare(X_noise, Y, X_original, 'NIGP_sqrt-PAC HYP GP', seed=i,
-                #                            test_size=test_size, ARD=ARD,
-                #                            epsilon=epsilon, loss=loss)
-
-                print('Full GP Algorithm: sqrt-PAC HYP GP')
-                RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
-                                           test_size=test_size, ARD=ARD,
-                                           epsilon=epsilon, loss=loss)
-                print('Full GP Algorithm: bkl-PAC HYP GP')
-                RV_pac = helpers.compare(X_noise, Y, X_original, 'bkl-PAC HYP GP', seed=i,
-                                         test_size=test_size, ARD=ARD,
-                                         epsilon=epsilon, loss=loss)
+                print('Start running:')
                 print('Full GP Algorithm: GPflow Full GP')
                 RV_gpflow = helpers.compare(X_noise, Y, X_original, 'GPflow Full GP', seed=i,
                                             test_size=test_size, ARD=ARD,
-                                            epsilon=epsilon, loss=loss)
-                RVs = [RV_pac, RV_naive, RV_gpflow]
+                                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
+                # RVs = [RV_pac, RV_naive, RV_gpflow]
+                RVs = [RV_gpflow]
 
                 # RVs = [RV_naive_NIGP]
                 print('End exact NIGP_sqrt-PAC HYP GP')
@@ -122,6 +120,8 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     df = pd.DataFrame(data)
     df.to_pickle(fn_out)
 
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Running full GPs')
     parser.add_argument('-r', '--run', help='run', action='store_true',
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
     dir_results = 'epsilon'
     if args.nInd == 0:
-        models = ['bkl-PAC HYP GP', 'sqrt-PAC HYP GP', 'GPflow Full GP']
+        models = ['GPflow Full GP']
         fn_args = (args.dataset, args.loss, args.ARD, 100.*args.test_size,
                    args.n_reps)
         fn_base = '%s_%s_ARD%d_testsize%d_nReps%d' % fn_args
@@ -155,6 +155,7 @@ if __name__ == '__main__':
         fn_results = os.path.join(dir_results, '%s.pckl' % fn_base)
         fn_png = os.path.join(dir_results, '%s.png' % fn_base)
         fn_pdf = os.path.join(dir_results, '%s.pdf' % fn_base)
+
     else:
         models = ['bkl-PAC Inducing Hyp GP', 'sqrt-PAC Inducing Hyp GP',
                   'GPflow VFE', 'GPflow FITC']
@@ -186,3 +187,17 @@ if __name__ == '__main__':
         # plt.savefig(fn_png)
         # plt.savefig(fn_pdf)
         # plt.close()
+
+
+def plot_gp(mu, cov, X, X_train=None, Y_train=None, samples=[]):
+    X = X.ravel()
+    mu = mu.ravel()
+    uncertainty = 1.96 * np.sqrt(np.diag(cov))  # 95%的置信区间
+
+    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1)
+    plt.plot(X, mu, label='Mean')
+    for i, sample in enumerate(samples):
+        plt.plot(X, sample, lw=2, ls='--', label=f'Sample{i + 1}')  # lw is the width of curve
+    if X_train is not None:
+        plt.plot(X_train, Y_train, 'rx')
+    plt.legend()

@@ -62,7 +62,7 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     Y = np.sin(X)
 
     F = X.shape[1]
-    noise_x_variance = 1.0
+    noise_x_variance = 2.0
     noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
     noise_x_covariance = np.eye(F) * noise_x_variance
 
@@ -82,19 +82,19 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
 
                 print('Start running:')
                 print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
-                # RV_naive_NIGP = helpers.compare(X_noise, Y, X_original, 'NIGP_sqrt-PAC HYP GP', seed=i,
-                #                            test_size=test_size, ARD=ARD,
-                #                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
-
-                RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
+                RV_naive_NIGP = helpers.compare(X_noise, Y, X_original, 'NIGP_sqrt-PAC HYP GP', seed=i,
                                            test_size=test_size, ARD=ARD,
                                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
 
-
-                # print('Full GP Algorithm: sqrt-PAC HYP GP')
                 # RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
                 #                            test_size=test_size, ARD=ARD,
                 #                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
+
+
+                print('Full GP Algorithm: sqrt-PAC HYP GP')
+                RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
+                                           test_size=test_size, ARD=ARD,
+                                           epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
 
                 print('Full GP Algorithm: bkl-PAC HYP GP')
                 RV_pac = helpers.compare(X_noise, Y, X_original, 'bkl-PAC HYP GP', seed=i,
@@ -105,7 +105,7 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
                                             test_size=test_size, ARD=ARD,
                                             epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
                 # RVs = [RV_pac, RV_naive, RV_gpflow]
-                RVs = [RV_pac, RV_naive, RV_gpflow]
+                RVs = [RV_naive_NIGP, RV_pac, RV_naive, RV_gpflow]
 
                 # RVs = [RV_naive_NIGP]
                 print('End exact NIGP_sqrt-PAC HYP GP')
@@ -139,6 +139,8 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     df = pd.DataFrame(data)
     df.to_pickle(fn_out)
 
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Running full GPs')
     parser.add_argument('-r', '--run', help='run', action='store_true',
@@ -164,7 +166,7 @@ if __name__ == '__main__':
 
     dir_results = 'epsilon'
     if args.nInd == 0:
-        models = ['bkl-PAC HYP GP', 'sqrt-PAC HYP GP', 'GPflow Full GP']
+        models = ['NIGP_sqrt-PAC HYP GP', 'bkl-PAC HYP GP', 'sqrt-PAC HYP GP', 'GPflow Full GP']
         fn_args = (args.dataset, args.loss, args.ARD, 100.*args.test_size,
                    args.n_reps)
         fn_base = '%s_%s_ARD%d_testsize%d_nReps%d' % fn_args
