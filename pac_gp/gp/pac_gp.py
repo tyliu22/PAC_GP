@@ -8,22 +8,18 @@ LICENSE file in the root directory of this source tree.
 
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
-
 """
     NIGP: noisy input Gaussian process case
-    
     func: _generate_optimization_ops() : add extra parameter sigma_x as variable 
     func: _get_optimization_x0() : Initialization extra parameters at here
 
     Learned self.GP function f should be changed, then posterior distribution should be changed
     KL divergence
-
 """
 
 import numpy as np
 import tensorflow as tf
 # import tensorflow_probability as tfp
-
 
 from scipy.optimize import minimize
 
@@ -209,7 +205,7 @@ class PAC_GP_BASE(Configurable):
 
     def optimize(self):
         x0 = self._get_optimization_x0() # class PAC_HYP_GP; PAC_INDUCING_GP; PAC_INDUCING_HYP_GP
-        bounds = self._get_bounds() # class PAC_HYP_GP; PAC_INDUCING_HYP_GP; applied in PAC_GP_BASE
+        bounds = self._get_bounds() # for optimize(): bound of varias; class PAC_HYP_GP; PAC_INDUCING_HYP_GP; applied in PAC_GP_BASE
 
         if self.verbosity > 0:
             self.ninits += 1
@@ -309,7 +305,7 @@ class PAC_GP_BASE(Configurable):
                                       shape=(None, self.input_dim),
                                       name='Xnew')
 
-        # GP hyperparameter:  What's the difference between sn2 and sn2_tf, sn2_unc_tf ??????????
+        # GP hyperparameter: sn2 and sn2_tf, sn2_unc_tf
         self.sn2_unc_tf = tf.placeholder(dtype=tf.float64,
                                          shape=(1, ),
                                          name='sn2_unconstrained')
@@ -438,14 +434,13 @@ class PAC_GP_BASE(Configurable):
                                                    self.min_log, self.max_log,
                                                    self.rounding_digits)
 
-
 class PAC_FULL_GP_BASE(PAC_GP_BASE):
 
     def __init__(self, *args, **kwargs):
         super(PAC_FULL_GP_BASE, self).__init__(*args, **kwargs)
 
     def _generate_gp_ops(self):
-        # Set up GP model
+        # Set up GP model, and calculate the prior and posterior distribution
         self.gp = GPR(self.X_tf, self.Y_tf, self.sn2_tf,
                       self.kernel, self.mean_function)
 
@@ -513,6 +508,7 @@ class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
 # Actual PAC GP implementations based on the base classes above
 # These classes should be instantiated
 
+
 class PAC_HYP_GP(PAC_FULL_GP_BASE):
     """ Full GP optimizing kernel hyperparameters
     """
@@ -541,6 +537,7 @@ class PAC_HYP_GP(PAC_FULL_GP_BASE):
         return variables
 
     def _get_bounds(self):
+        # for optimize() "L-BFGS-B": bounds for variables
         x_min = self.pos_trans.backward(np.exp(self.min_log))
         x_max = self.pos_trans.backward(np.exp(self.max_log))
 
@@ -596,7 +593,6 @@ class PAC_HYP_GP(PAC_FULL_GP_BASE):
         else:
             self.objective = self.upper_bound
         self.objective_grad = tf.gradients(self.objective, variables)
-
 
 
 
@@ -747,10 +743,6 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
             self.debug_variables += 1
             # Common op to run all variable summaries
             self._debug_op = tf.summary.merge_all(key="stats_summaries")
-
-
-
-
 
 
 

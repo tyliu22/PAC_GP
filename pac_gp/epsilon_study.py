@@ -52,14 +52,14 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     Y = preprocessing.scale(Y)
     F = X.shape[1]
 
-    # noise_var_train = np.zeros((F, 1)) + 1
-    # np.random.normal(0.0, noise_var_train, 500)
-    # noise_x_variance = 0.5
-    # noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
-    # noise_x_covariance = np.eye(F) * noise_x_variance
-    #
-    # X_original = X
-    # X_noise = X + noise_x
+    noise_var_train = np.zeros((F, 1)) + 1
+    np.random.normal(0.0, noise_var_train, 500)
+    noise_x_variance = 0.5
+    noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
+    noise_x_covariance = np.eye(F) * noise_x_variance
+
+    X_original = X
+    X_noise = X + noise_x
 
     data = []
     for i in range(n_repetitions):
@@ -76,21 +76,21 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
                 #                            test_size=test_size, ARD=ARD,
                 #                            epsilon=epsilon, loss=loss)
 
-                print('Full GP Algorithm: sqrt-PAC HYP GP')
-                RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
-                                           test_size=test_size, ARD=ARD,
-                                           epsilon=epsilon, loss=loss)
-                print('Full GP Algorithm: bkl-PAC HYP GP')
-                RV_pac = helpers.compare(X_noise, Y, X_original, 'bkl-PAC HYP GP', seed=i,
-                                         test_size=test_size, ARD=ARD,
-                                         epsilon=epsilon, loss=loss)
+                # print('Full GP Algorithm: sqrt-PAC HYP GP')
+                # RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
+                #                            test_size=test_size, ARD=ARD,
+                #                            epsilon=epsilon, loss=loss)
+                # print('Full GP Algorithm: bkl-PAC HYP GP')
+                # RV_pac = helpers.compare(X_noise, Y, X_original, 'bkl-PAC HYP GP', seed=i,
+                #                          test_size=test_size, ARD=ARD,
+                #                          epsilon=epsilon, loss=loss)
                 print('Full GP Algorithm: GPflow Full GP')
                 RV_gpflow = helpers.compare(X_noise, Y, X_original, 'GPflow Full GP', seed=i,
                                             test_size=test_size, ARD=ARD,
                                             epsilon=epsilon, loss=loss)
-                RVs = [RV_pac, RV_naive, RV_gpflow]
+                # RVs = [RV_pac, RV_naive, RV_gpflow]
 
-                # RVs = [RV_naive_NIGP]
+                RVs = [RV_gpflow]
                 print('End exact NIGP_sqrt-PAC HYP GP')
 
             else:

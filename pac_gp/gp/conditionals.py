@@ -22,6 +22,9 @@ of this source tree.
 
 def feature_conditional(Xnew, Z, kern, f, full_cov=False,
                         q_sqrt=None, jitter=1e-6):
+    """
+        What's the meanning of this function
+    """
     num_inducing = tf.shape(Z)[0]
     Kmm = kern.K(Z) + jitter * tf.eye(num_inducing, dtype=tf.float64)
     Kmn = kern.K(Z, Xnew)
@@ -33,6 +36,9 @@ def feature_conditional(Xnew, Z, kern, f, full_cov=False,
 
 
 def base_conditional(Kmn, Kmm, Knn, f, full_cov=False, q_sqrt=None):
+    """
+        What's the meanning of this function
+    """
     # compute kernel stuff
     num_func = tf.shape(f)[1]  # K
     Lm = tf.cholesky(Kmm)

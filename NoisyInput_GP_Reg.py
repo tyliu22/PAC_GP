@@ -52,7 +52,8 @@ class GPRegressor:
         if return_std:
             # See equation (7) in paper NIGP:
             std2 = np.sqrt(np.diag(
-                self.autokernel(X, np.zeros_like(X), l, self.varf) - np.dot(self.K2, np.dot(self.pred_fac, self.K2.T))))
+                self.autokernel(X, np.zeros_like(X), l, self.varf)
+                - np.dot(self.K2, np.dot(self.pred_fac, self.K2.T)) ))
             return mean, std2
         else:
             return mean, 0.0
@@ -76,11 +77,11 @@ class GPRegressor:
         tmp2 = 1.0
         l = l * np.ones(len(self.X_train[0, :])) # diagonal matrix of the kernal
         for i in range(0, len(X[0, :])):
-            l2 = l[i] * l[i]  #
+            l2 = l[i] * l[i]  # Lambda : square of lengthscale of kernal
             d1 = cdist(X[:, i].reshape(-1, 1), X[:, i].reshape(-1, 1), metric='sqeuclidean') # ||x-x'||^2_2  (N*N)
-            d2 = cdist(var_x[:, i].reshape(-1, 1), -var_x[:, i].reshape(-1, 1), metric='euclidean') # (N*N)
+            d2 = cdist(var_x[:, i].reshape(-1, 1), -var_x[:, i].reshape(-1, 1), metric='euclidean') # (N*N) Sigma_x variance of input
             tmp += d1 / (l2 + d2) # (N*N)
-            tmp2 *= (1.0 + d2 / l2) # (N*N)
+            tmp2 *= (1.0 + d2 / l2) # (N*N) sigma_f^2 * sqrt[Sigma_x in v(Lambda) + I] * exp(-0.5*(x_i-x_j))
         return varf * np.power(tmp2, -0.5) * np.exp(-0.5 * tmp)
 
         # X_train - Input data (num_samples, num_features)
@@ -126,7 +127,7 @@ class GPRegressor:
                 # res: final optimized parameters; l0 is the initialize parameter
                 if res['fun'] < best_f:
                     self.varf = res['x'][0]    # output variance
-                    self.alpha = res['x'][1]   # input noise introduced variance, total variance
+                    self.alpha = res['x'][1]   # varn in nlml function
                     self.l = res['x'][2::]     # lengthscale parameter for kernal
                     self.opt_params = res['x'] #
                 print("iter: " + str(j) + ". params: " + "Output variance：" + str(self.varf) +
@@ -141,15 +142,17 @@ class GPRegressor:
         self.pred_vec = np.dot(self.pred_fac, self.y_train)
 
     def neg_log_marginal_likelihood(self, l):
-        # This nlml
+        # This nlml three hyperparameters: SEE (2.31) in book GPML
         varf = l[0] # output variance
         varn = l[1] # input noise introduced variance, total variance
         l = l[2::]  # lengthscale parameter for kernal
-        # calculate the kernal matrix: K(X,X) + sigma^2 * I + varn
+        # calculate the kernal matrix: K(X,X) + sigma^2 * I + varn'
+
         # varn or l[1]: (slope of mean func)^T * Sigma_x * (slope of mean func)
-        K = self.autokernel(self.X_train, self.var_x, l, varf) + np.identity(len(self.X_train[:, 0])) \
-            * (self.var_y + varn)
+        K = self.autokernel(self.X_train, self.var_x, l, varf) \
+            + np.identity(len(self.X_train[:, 0])) * (self.var_y + varn)
         Kinv = np.linalg.pinv(K)  # Calculate the pseudo-inverse of a matrix
+        print('varf:', varf, 'varn:', varn, 'lenghtscale:', l)
         return 0.5 * np.dot(self.y_train, np.dot(Kinv, self.y_train)) + 0.5 * np.log(np.linalg.det(K)) \
                + 0.5 * len(K[:, 0]) * np.log(2 * math.pi)
 
@@ -170,15 +173,36 @@ if __name__ == "__main__":
     y_std = 0.1 * np.ones_like(y_train)
     y_train += np.random.normal(0.0, y_std)
     X_train += np.random.normal(0.0, X_std)
+    # y = sin(x) + noise_y
+    # x_train = x + noise_x
 
     # create data by constant interval
     Xcv = np.linspace(-10, 10, 100).reshape(-1, 1)
     ycv = sincsig(Xcv[:, 0])
 
+    print('Start standard GP')
+    l_bounds = np.array([[0.01, 0.3], [0.02, 0.2], [0.1, 5.0]])
+    gp = GPRegressor(1, 1, num_restarts_hyper=10)
+    gp.fit(X_train, y_train, 0.0, 0.0, l_bounds=l_bounds)
+    yp, std = gp.predict(Xcv, True)
+    print('End standard GP')
+    # print
+    # np.sqrt(np.average((yp - ycv) ** 2))
+
+    plt.figure()
+    plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
+    plt.plot(Xcv[:, 0], sincsig(Xcv))
+    plt.plot(X_train[:, 0], y_train, 'r.')
+    plt.title('Regular GP')
+    plt.show()
+
+
+    print('Start NIGP')
     l_bounds = np.array([[0.01, 0.3], [0.01, 0.1], [0.1, 5.0]])
     gp = GPRegressor(1, 1, num_restarts_hyper=10)
     gp.fit(X_train, y_train, X_std ** 2, 0.0, l_bounds=l_bounds)
     yp, std = gp.predict(Xcv, True)
+    print('End NIGP')
     # print
     # np.sqrt(np.average((yp - ycv) ** 2))
 
@@ -189,16 +213,3 @@ if __name__ == "__main__":
     plt.title('Noisy GP')
     plt.show()
 
-    l_bounds = np.array([[0.01, 0.3], [0.02, 0.2], [0.1, 5.0]])
-    gp = GPRegressor(1, 1, num_restarts_hyper=10)
-    gp.fit(X_train, y_train, 0.0, 0.0, l_bounds=l_bounds)
-    yp, std = gp.predict(Xcv, True)
-    # print
-    # np.sqrt(np.average((yp - ycv) ** 2))
-
-    plt.figure()
-    plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
-    plt.plot(Xcv[:, 0], sincsig(Xcv))
-    plt.plot(X_train[:, 0], y_train, 'r.')
-    plt.title('Regular GP')
-    plt.show()

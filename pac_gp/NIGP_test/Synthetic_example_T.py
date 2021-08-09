@@ -29,7 +29,7 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     running methods
 
     input:
-    dataset_name    :   name of dataset to load
+    dataset_name    :   sin function for testing the GPR without GPflow
     fn_out          :   name of results file
     epsilon_range   :   list of epsilons
     test_size       :   fraction of test data points
@@ -39,37 +39,20 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     loss            :   loss function to use (01_loss, inv_gauss)
     """
 
-    # load data
-    # X, y = load_dataset.load(dataset_name)
-    # Y = y[:, np.newaxis]
-    #
-    # print(dataset_name)
-    # print(X.shape)
-    # print(Y.shape)
-    #
-    # # scale to zero mean and unit variance
-    # X = preprocessing.scale(X)
-    # Y = preprocessing.scale(Y)
-    # F = X.shape[1]
-
-    # noise_var_train = np.zeros((F, 1)) + 1
-    # np.random.normal(0.0, noise_var_train, 500)
-
-
-    # Generate data
     X = np.arange(-10, 10, 0.05).reshape(-1, 1)
-    # X_train = np.array([-4, -3, -2, -1, 1]).reshape(-1, 1)
     Y = np.sin(X)
 
     F = X.shape[1]
     noise_x_variance = 2.0
-    noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
+    # noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
     noise_x_covariance = np.eye(F) * noise_x_variance
 
+    # sin data without uncertainty:
     X_original = X
-    X_noise = X + noise_x
+    X_noise = X
 
-
+    """ Full GP Regerssion Test:
+    """
 
     data = []
     for i in range(n_repetitions):
@@ -77,41 +60,14 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
         print(i)
         for ie, epsilon in enumerate(epsilon_range):
 
-            if nInd == 0:
-                # exact GP
-
+            if nInd == 0: # standard GPR
                 print('Start running:')
                 print('Full GP Algorithm: GPflow Full GP')
                 RV_gpflow = helpers.compare(X_noise, Y, X_original, 'GPflow Full GP', seed=i,
                                             test_size=test_size, ARD=ARD,
                                             epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
-                # RVs = [RV_pac, RV_naive, RV_gpflow]
                 RVs = [RV_gpflow]
-
-                # RVs = [RV_naive_NIGP]
                 print('End exact NIGP_sqrt-PAC HYP GP')
-
-            else:
-                # sparse GP
-                print('Start running sparse GP')
-                print('Sparse GP Algorithm: sqrt-PAC Inducing Hyp GP')
-                RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP',
-                                          seed=i, test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon, loss=loss)
-                print('Sparse GP Algorithm: GPflow VFE')
-                RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
-                                         test_size=test_size, ARD=ARD,
-                                         nInd=nInd, epsilon=epsilon, loss=loss)
-                print('Sparse GP Algorithm: GPflow FITC')
-                RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
-                                          test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon,loss=loss)
-                print('Sparse GP Algorithm: bkl-PAC Inducing Hyp GP')
-                RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP',
-                                         seed=i, test_size=test_size, ARD=ARD,
-                                         nInd=nInd, epsilon=epsilon, loss=loss)
-                RVs = [RV_vfe, RV_fitc, RV_pac, RV_pac2]
-                print('End sparse GP')
 
             for RV in RVs:
                 data += RV
@@ -119,7 +75,6 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     print('Store data into DataFrame df')
     df = pd.DataFrame(data)
     df.to_pickle(fn_out)
-
 
 
 if __name__ == '__main__':
@@ -146,22 +101,12 @@ if __name__ == '__main__':
     args.nInd = int(args.nInd)
 
     dir_results = 'epsilon'
-    if args.nInd == 0:
+    if args.nInd == 0:  # standard GPR
         models = ['GPflow Full GP']
         fn_args = (args.dataset, args.loss, args.ARD, 100.*args.test_size,
                    args.n_reps)
         fn_base = '%s_%s_ARD%d_testsize%d_nReps%d' % fn_args
 
-        fn_results = os.path.join(dir_results, '%s.pckl' % fn_base)
-        fn_png = os.path.join(dir_results, '%s.png' % fn_base)
-        fn_pdf = os.path.join(dir_results, '%s.pdf' % fn_base)
-
-    else:
-        models = ['bkl-PAC Inducing Hyp GP', 'sqrt-PAC Inducing Hyp GP',
-                  'GPflow VFE', 'GPflow FITC']
-        fn_args = (args.dataset, args.loss, args.nInd, args.ARD,
-                   100.*args.test_size, args.n_reps)
-        fn_base = '%s_%s_nInd%d_ARD%d_testsize%d_nReps%d' % fn_args
         fn_results = os.path.join(dir_results, '%s.pckl' % fn_base)
         fn_png = os.path.join(dir_results, '%s.png' % fn_base)
         fn_pdf = os.path.join(dir_results, '%s.pdf' % fn_base)

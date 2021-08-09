@@ -96,6 +96,7 @@ class RBF:
 
 
 
+
 # ??? NIGP and GP should have the same kernel RBF
 # just calculate the derivative of mean function
 class NIGP_RBF:

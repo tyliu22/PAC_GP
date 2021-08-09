@@ -11,8 +11,11 @@ LICENSE file in the root directory of this source tree.
 
 from gp.pac_gp import PAC_HYP_GP, PAC_INDUCING_HYP_GP, PAC_GP_BASE, NIGP_PAC_HYP_GP
 from GPy.models import GPRegression, SparseGPRegression
+
+from gp import kerns # class RBF
+from gp import gpr   # class GPR NIGPR GPRFITC SVGP
 from gp.mean_functions import Zero
-from gp import kerns
+from gp import conditionals
 
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -41,12 +44,8 @@ def as_pac(param):
 def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
                         loss='01_loss', **extra):
     """
-    transforms model to PAC GP model, so reuse those function to analyze the model performancce
+    transforms model to PAC GP model
     transform the GP model into
-
-    To calculate the learnt GP model's PAC-Bayes performance: upper bound, KL div, loss and other paras.
-
-    By assign learnt paras to the corresponding PAC-GP model,then analyze its performance.
 
     input
     model       :       trained GP-object
@@ -72,46 +71,16 @@ def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
         m.round_hyps()
         return m
 
-    elif issubclass(type(model), SparseGPRegression):
-        kern = kerns.RBF(input_dim=model.input_dim, ARD=ARD)
-        m = PAC_INDUCING_HYP_GP(X=model.X, Y=model.Y, Z=model.inducing_inputs,
-                                sn2=as_pac(model.Gaussian_noise.variance),
-                                kernel=kern, epsilon=epsilon,
-                                delta=delta, loss=loss)
-        m.kernel.variance = as_pac(model.kern.variance)
-        m.kernel.lengthscale = as_pac(model.kern.lengthscale)
-        m.round_hyps()
-        return m
-
-    elif issubclass(type(model), gpflow_wrapper.GPflowSparseWrapper):
-        Z = model.model.feature.Z.value
-        sn2 = model.model.likelihood.variance.value
-        X = model.model.X.value
-        Y = model.model.Y.value
-        kern = kerns.RBF(input_dim=X.shape[1], ARD=ARD)
-        m = PAC_INDUCING_HYP_GP(X=X, Y=Y, Z=Z,
-                                sn2=as_pac(sn2),
-                                kernel=kern, epsilon=epsilon,
-                                delta=delta, loss=loss)
-
-        m.kernel.variance = as_pac(model.model.kern.variance.value)
-        m.kernel.lengthscale = as_pac(model.model.kern.lengthscales.value)
-        m.round_hyps()
-        return m
-
     elif issubclass(type(model), gpflow_wrapper.GPflowFullWrapper):
 
         sn2 = model.model.likelihood.variance.value
         X = model.model.X.value
         Y = model.model.Y.value
         kern = kerns.RBF(input_dim=X.shape[1], ARD=ARD)
-        # build a empty PAC_HYP_GP model, then copy hyper-paras into this model to calculate performance paras
         m = PAC_HYP_GP(X=X, Y=Y, sn2=as_pac(sn2), kernel=kern, epsilon=epsilon,
                        delta=delta, loss=loss)
         m.kernel.variance = as_pac(model.model.kern.variance.value)
         m.kernel.lengthscale = as_pac(model.model.kern.lengthscales.value)
-
-        # hyper-paras: kernel.lengthscale and variance
         m.round_hyps()
         return m
 
@@ -141,6 +110,7 @@ def run_model(_model, metrics, X_noise_test, Y_test, X_origin_test, epsilon, del
     # transform to GP PAC
     model = transform_to_pac_gp(_model, epsilon=epsilon, delta=delta, ARD=ARD,
                                 loss=loss)
+
     # predict
     ymean_hat, yvar_hat = model.predict(X_origin_test, full_cov=False)
     fmean_hat, fvar_hat = model.predict_noiseless(X_origin_test, full_cov=False)
@@ -166,22 +136,6 @@ def run_model(_model, metrics, X_noise_test, Y_test, X_origin_test, epsilon, del
     return res
 
 
-def init_inducing_points(X, m):
-    """
-    initialize m inducing points by using k-means on X
-
-    inputs:
-    X   :   data points
-    m   :   number of clusters
-    """
-    seed = int(np.abs(X.flatten()[0]))
-    numpy_rand_state = np.random.get_state()
-    np.random.seed(seed)
-    Z_init = kmeans2(X, k=m)[0]
-    np.random.set_state(numpy_rand_state)
-    return Z_init
-
-
 def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0.01, epsilon=0.2,
                 nInd=None, suffix='', loss='01_loss', noise_input_variance=None):
     """
@@ -202,77 +156,17 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
     """
     F = X_origin_train.shape[1]
 
-    if model_name == 'bkl-PAC HYP GP':
-        kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)
-        mean_function = Zero()
-        model = PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
-                           epsilon=epsilon, mean_function=mean_function,
-                           delta=delta, verbosity=0, loss=loss, noise_input_variance=None)
-
-    elif model_name == 'sqrt-PAC HYP GP':
-        kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
-        mean_function = Zero()
-        model = PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
-                           epsilon=epsilon, mean_function=mean_function,
-                           delta=delta, verbosity=0, method='naive', loss=loss, noise_input_variance=None)
-
-    elif model_name == 'NIGP_sqrt-PAC HYP GP':
-        # change to another kernal: NIGP kernal which consider the noise input regularization item as variable
-        kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
-        # random initialize noisy input matrix, shape of matrix should be the same as K_NN
-        # data_dim = tf.shape(X)[0]
-        # noise_x_init = tf.random_normal([data_dim, data_dim], dtype=tf.float64)
-
-        mean_function = Zero()
-        model = NIGP_PAC_HYP_GP(X=X_noise_train, Y=Y, kernel=kern, sn2=sn2_init,
-                                epsilon=epsilon, mean_function=mean_function,
-                                delta=delta, verbosity=0, method='naive', loss=loss, noise_input_variance=None)
-
-    elif model_name == 'bkl-PAC Inducing Hyp GP':
-        Z = init_inducing_points(X_noise_train, nInd)
-        kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
-        mean_function = Zero()
-        model = PAC_INDUCING_HYP_GP(X=X_noise_train, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
-                                    epsilon=epsilon,
-                                    mean_function=mean_function,
-                                    delta=delta, verbosity=0, loss=loss, noise_input_variance=None)
-
-    elif model_name == 'sqrt-PAC Inducing Hyp GP':
-        Z = init_inducing_points(X_noise_train, nInd)
-        kern = kerns.RBF(input_dim=F, ARD=ARD)
-        sn2_init = np.asarray([1.0 ** 2], dtype=np.float64) # transfer this as (flaot64) array
-        mean_function = Zero()
-        model = PAC_INDUCING_HYP_GP(X=X_noise_train, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
-                                    epsilon=epsilon,
-                                    mean_function=mean_function,
-                                    delta=delta, verbosity=0, method='naive',
-                                    loss=loss, noise_input_variance=None)
+    if model_name == 'GPR Full GP':
+       kern = gpflow.kernels.RBF(F, ARD=ARD)
+       _model = gpflow.models.GPR(X_noise_train, Y, kern)
+       model = gpflow_wrapper.GPflowFullWrapper(_model)
 
     elif model_name == 'GPflow Full GP':
-        kern = gpflow.kernels.RBF(F, ARD=ARD)
-        _model = gpflow.models.GPR(X_noise_train, Y, kern)
-        model = gpflow_wrapper.GPflowFullWrapper(_model)
-
-    elif model_name == 'GPflow VFE':
-        Z = init_inducing_points(X_noise_train, nInd)
+        # Z = init_inducing_points(X_noise_train, nInd)
         kern = gpflow.kernels.RBF(F, ARD=ARD)
         _model = gpflow.models.SGPR(X_noise_train, Y, kern, Z)
         model = gpflow_wrapper.GPflowSparseWrapper(_model)
 
-    elif model_name == 'GPflow FITC':
-        Z = init_inducing_points(X_noise_train, nInd)
-        kern = gpflow.kernels.RBF(F, ARD=ARD)
-        _model = gpflow.models.GPRFITC(X_noise_train, Y, kern, Z)
-        model = gpflow_wrapper.GPflowSparseWrapper(_model)
-
-    elif model_name == 'pac_gp Full GP':
-        kern = gpflow.kernels.RBF(F, ARD=ARD)
-        _model = gpflow.models.GPR(X_noise_train, Y, kern)
-        model = gpflow_wrapper.GPflowFullWrapper(_model)
     return model
 
 

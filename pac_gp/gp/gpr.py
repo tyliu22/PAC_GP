@@ -229,7 +229,6 @@ class SVGP:
         return mean, var
 
 
-
 class NIGPR:
     """
     Noisy Input Gaussian Process Regression.

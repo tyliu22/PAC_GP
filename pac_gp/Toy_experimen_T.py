@@ -9,12 +9,13 @@ LICENSE file in the root directory of this source tree.
 """
 import sys
 import matplotlib
-#matplotlib.use('agg')
 import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import os
 import argparse
+from pac_gp.gp import gpr, kerns, mean_functions
+
 from sklearn import preprocessing
 import tensorflow as tf
 
@@ -22,6 +23,11 @@ import utils.plotting as plotting
 import utils.load_dataset as load_dataset
 import utils.helpers as helpers
 
+"""
+    Toy model for GPR or NIGPR
+    input data single dimension is {sin} function with noise
+    y = sin(x) + noise_y
+"""
 
 def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
         ARD=False, nInd=0, loss='01_loss'):
@@ -39,105 +45,22 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     loss            :   loss function to use (01_loss, inv_gauss)
     """
 
-    # load data
-    # X, y = load_dataset.load(dataset_name)
-    # Y = y[:, np.newaxis]
-    #
-    # print(dataset_name)
-    # print(X.shape)
-    # print(Y.shape)
-    #
-    # # scale to zero mean and unit variance
-    # X = preprocessing.scale(X)
-    # Y = preprocessing.scale(Y)
-    # F = X.shape[1]
+    # training dataset
+    X_train = np.random.random((150, 1)) * 20.0 - 10.0
+    Y_train = np.sin(X_train)
 
-    # noise_var_train = np.zeros((F, 1)) + 1
-    # np.random.normal(0.0, noise_var_train, 500)
+    N, D = X_train.shape[0], X_train.shape[1]
 
+    X_std = 0.4 # standard var sigma, variance is simga^2
+    noise_y = np.random.normal(0.0, X_std, size=X_train.shape)
 
-    # Generate data
-    X = np.arange(-10, 10, 0.05).reshape(-1, 1)
-    # X_train = np.array([-4, -3, -2, -1, 1]).reshape(-1, 1)
-    Y = np.sin(X)
+    Y_train = np.sin(X_train) + noise_y
 
-    F = X.shape[1]
-    noise_x_variance = 2.0
-    noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
-    noise_x_covariance = np.eye(F) * noise_x_variance
+    # test dataset
+    Xcv = np.linspace(-10, 10, 100).reshape(-1, 1)
+    ycv = np.sin(Xcv[:, 0])
 
-    X_original = X
-    X_noise = X + noise_x
-
-
-
-    data = []
-    for i in range(n_repetitions):
-        # vary epsilon
-        print(i)
-        for ie, epsilon in enumerate(epsilon_range):
-
-            if nInd == 0:
-                # exact GP
-
-                print('Start running:')
-                print('Full GP Algorithm: NIGP_sqrt-PAC HYP GP')
-                RV_naive_NIGP = helpers.compare(X_noise, Y, X_original, 'NIGP_sqrt-PAC HYP GP', seed=i,
-                                           test_size=test_size, ARD=ARD,
-                                           epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
-
-                # RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
-                #                            test_size=test_size, ARD=ARD,
-                #                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
-
-
-                print('Full GP Algorithm: sqrt-PAC HYP GP')
-                RV_naive = helpers.compare(X_noise, Y, X_original, 'sqrt-PAC HYP GP', seed=i,
-                                           test_size=test_size, ARD=ARD,
-                                           epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
-
-                print('Full GP Algorithm: bkl-PAC HYP GP')
-                RV_pac = helpers.compare(X_noise, Y, X_original, 'bkl-PAC HYP GP', seed=i,
-                                         test_size=test_size, ARD=ARD,
-                                         epsilon=epsilon, loss=loss, noise_input_variance=noise_x_variance)
-                print('Full GP Algorithm: GPflow Full GP')
-                RV_gpflow = helpers.compare(X_noise, Y, X_original, 'GPflow Full GP', seed=i,
-                                            test_size=test_size, ARD=ARD,
-                                            epsilon=epsilon, loss=loss, noise_input_variance=noise_x_covariance)
-                # RVs = [RV_pac, RV_naive, RV_gpflow]
-                RVs = [RV_naive_NIGP, RV_pac, RV_naive, RV_gpflow]
-
-                # RVs = [RV_naive_NIGP]
-                print('End exact NIGP_sqrt-PAC HYP GP')
-
-            else:
-                # sparse GP
-                print('Start running sparse GP')
-                print('Sparse GP Algorithm: sqrt-PAC Inducing Hyp GP')
-                RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP',
-                                          seed=i, test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon, loss=loss)
-                print('Sparse GP Algorithm: GPflow VFE')
-                RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
-                                         test_size=test_size, ARD=ARD,
-                                         nInd=nInd, epsilon=epsilon, loss=loss)
-                print('Sparse GP Algorithm: GPflow FITC')
-                RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
-                                          test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon,loss=loss)
-                print('Sparse GP Algorithm: bkl-PAC Inducing Hyp GP')
-                RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP',
-                                         seed=i, test_size=test_size, ARD=ARD,
-                                         nInd=nInd, epsilon=epsilon, loss=loss)
-                RVs = [RV_vfe, RV_fitc, RV_pac, RV_pac2]
-                print('End sparse GP')
-
-            for RV in RVs:
-                data += RV
-
-    print('Store data into DataFrame df')
-    df = pd.DataFrame(data)
-    df.to_pickle(fn_out)
+    kern = kerns.RBF(input_dim=X_train.shape[1], ARD=ARD)
 
 
 
