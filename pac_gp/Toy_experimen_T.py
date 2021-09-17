@@ -83,7 +83,6 @@ if __name__ == '__main__':
                         default='01_loss')
 
     args = parser.parse_args()
-    args.test_size = float(args.test_size)
     args.n_reps = int(args.n_reps)
     args.nInd = int(args.nInd)
 

@@ -2,7 +2,7 @@
     This code is copy from:
     https://github.com/krasserm/bayesian-machine-learning/blob/dev/gaussian-processes/gaussian_processes.ipynb
     Theory: http://krasserm.github.io/2018/03/19/gaussian-processes/
-
+fgh
     Setting:
         mean function of GPR is selected as X, which is the same as
 """
@@ -13,8 +13,10 @@ from numpy.linalg import inv
 from numpy.linalg import cholesky, det
 from scipy.linalg import solve_triangular
 from scipy.optimize import minimize
-from matplotlib import animation, cm
-import tensorflow as tf
+# from matplotlib import animation, cm
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 # scikit learn package
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -23,7 +25,7 @@ from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 # GPy
 import GPy
 
-def plot_gp(mu, cov, X, X_train=None, Y_train=None, samples=[], titles='GPR plot'):
+def plot_gp(mu, cov, X, X_train=None, Y_train=None, titles='GPR plot'):
     # X: test data:  X_train and y_train: training data and labels
     X = X.ravel()
     mu = mu.ravel()
@@ -31,8 +33,8 @@ def plot_gp(mu, cov, X, X_train=None, Y_train=None, samples=[], titles='GPR plot
 
     plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1)
     plt.plot(X, mu, label='Mean')
-    for i, sample in enumerate(samples):
-        plt.plot(X, sample, lw=1, ls='--', label=f'Sample {i + 1}')
+    # for i, sample in enumerate(samples):
+    #     plt.plot(X, sample, lw=1, ls='--', label=f'Sample {i + 1}')
     if X_train is not None:
         plt.plot(X_train, Y_train, 'rx')
     plt.legend()
@@ -119,7 +121,7 @@ def posterior(X_s, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, Non_zero_
     """
     Computes the suffifient statistics of the posterior distribution
     from m training data X_train and Y_train and n new inputs X_s.
-
+ -
     Args:
         X_s: New input locations (n x d).
         X_train: Training locations (m x d).
@@ -337,19 +339,17 @@ Y_train = np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
 X_train_obs = X_train + noise_x * np.random.randn(*X_train.shape)
 X_train = X_train_obs
 
-samples = np.random.multivariate_normal(mu_prior.ravel(), cov_prior, 3)
-plot_gp(mu_prior, cov_prior, X, X_train=X_train, Y_train=Y_train, samples=samples, titles='GPR prior dis init_paras')
-
-
+# samples = np.random.multivariate_normal(mu_prior.ravel(), cov_prior, 3)
+plot_gp(mu_prior, cov_prior, X, X_train=X_train, Y_train=Y_train, titles='GPR prior dis init_paras')
 # Compute mean and covariance of the posterior distribution
 # mu_s, cov_s = posterior(X, X_train, Y_train, sigma_y=noise_y)
 # GPR posterior distribution
 mu_post_GPR, cov_post_GPR = posterior(X, X_train, Y_train, sigma_y=noise_y)
 # mu_post_NIGP, cov_post_NIGP = NIGP_posterior(X, X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
 
-# plot: posterior dis of training dataset, in terms of GPR and -NIGPR
-samples = np.random.multivariate_normal(mu_post_GPR.ravel(), cov_post_GPR, 3)
-plot_gp(mu_post_GPR, cov_post_GPR, X, X_train=X_train, Y_train=Y_train, samples=samples, titles='GPR post init_paras')
+# plot: posterior dis of training dataset, in terms  o f GPR and -NIGPR
+# samples = np.random.multivariate_normal(mu_post_GPR.ravel(), cov_post_GPR, 3)
+plot_gp(mu_post_GPR, cov_post_GPR, X, X_train=X_train, Y_train=Y_train, titles='GPR post init_paras')
 
 # samples = np.random.multivariate_normal(mu_post_NIGP.ravel(), cov_post_NIGP, 3)
 # plot_gp(mu_post_NIGP, cov_post_NIGP, X, X_train=X_train, Y_train=Y_train, samples=samples, titles='NIGPR post init_paras')
@@ -374,8 +374,9 @@ mu_post_GPR_fit, cov_post_GPR_fit = posterior(X, X_train, Y_train, l=l_opt,
                                               sigma_f=sigma_f_opt, sigma_y=noise_y)
 plot_gp(mu_post_GPR_fit, cov_post_GPR_fit, X, X_train=X_train, Y_train=Y_train, titles='GPR post fit paras')
 
+
 mu_post_NIGP_fit, cov_post_NIGP_fit = NIGP_posterior(X, X_train, Y_train, l=l_opt,
-                                                sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
+                                                     sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
 plot_gp(mu_post_NIGP_fit, cov_post_NIGP_fit, X, X_train=X_train, Y_train=Y_train, titles='NIGPR post fit paras')
 
 print('End')

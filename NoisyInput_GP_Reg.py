@@ -22,6 +22,21 @@ import math
 from scipy.spatial.distance import cdist, pdist, squareform
 from scipy.optimize import minimize
 
+def plot_gp(mu, std, X, X_train=None, Y_train=None, title='NIGP'): # samples=[]
+    X = X.ravel()
+    mu = mu.ravel()
+    # uncertainty = 1.96 * np.sqrt(np.diag(cov))
+    uncertainty = 1.96 * std
+
+    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1)
+    plt.plot(X, mu, label='Estimation')
+    # for i, sample in enumerate(samples):
+    #     plt.plot(X, sample, lw=1, ls='--', label=f'Sample {i + 1}')
+    if X_train is not None:
+        plt.plot(Xcv, sincsig(Xcv), 'rx', label='Real data')
+    plt.legend()
+    plt.title(title)
+    plt.show()
 
 class GPRegressor:
 
@@ -130,8 +145,8 @@ class GPRegressor:
                     self.alpha = res['x'][1]   # varn in nlml function
                     self.l = res['x'][2::]     # lengthscale parameter for kernal
                     self.opt_params = res['x'] #
-                print("iter: " + str(j) + ". params: " + "Output variance：" + str(self.varf) +
-                      ", " + str(self.alpha) + ", " + str(self.l))
+                # print("iter: " + str(j) + ". params: " + "Output variance：" + str(self.varf) +
+                      # ", " + str(self.alpha) + ", " + str(self.l))
             self.var_y += self.alpha
         # Calculate factors needed for prediction.
         # K1 = K(X,X)
@@ -152,7 +167,7 @@ class GPRegressor:
         K = self.autokernel(self.X_train, self.var_x, l, varf) \
             + np.identity(len(self.X_train[:, 0])) * (self.var_y + varn)
         Kinv = np.linalg.pinv(K)  # Calculate the pseudo-inverse of a matrix
-        print('varf:', varf, 'varn:', varn, 'lenghtscale:', l)
+        # print('varf:', varf, 'varn:', varn, 'lenghtscale:', l)
         return 0.5 * np.dot(self.y_train, np.dot(Kinv, self.y_train)) + 0.5 * np.log(np.linalg.det(K)) \
                + 0.5 * len(K[:, 0]) * np.log(2 * math.pi)
 
@@ -189,12 +204,13 @@ if __name__ == "__main__":
     # print
     # np.sqrt(np.average((yp - ycv) ** 2))
 
-    plt.figure()
-    plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
-    plt.plot(Xcv[:, 0], sincsig(Xcv))
-    plt.plot(X_train[:, 0], y_train, 'r.')
-    plt.title('Regular GP')
-    plt.show()
+    plot_gp(yp, std, Xcv, X_train=X_train, Y_train=y_train, title='GP')
+    # plt.figure()
+    # plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
+    # plt.plot(Xcv[:, 0], sincsig(Xcv))
+    # plt.plot(X_train[:, 0], y_train, 'r.')
+    # plt.title('Regular GP')
+    # plt.show()
 
 
     print('Start NIGP')
@@ -206,10 +222,21 @@ if __name__ == "__main__":
     # print
     # np.sqrt(np.average((yp - ycv) ** 2))
 
-    plt.figure()
-    plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
-    plt.plot(Xcv[:, 0], sincsig(Xcv))
-    plt.plot(X_train[:, 0], y_train, 'r.')
-    plt.title('Noisy GP')
+    plot_gp(yp, std, Xcv, X_train=X_train, Y_train=y_train, title='NIGP')
+    # plt.figure()
+    # plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
+    # plt.plot(Xcv[:, 0], sincsig(Xcv))
+    # plt.plot(X_train[:, 0], y_train, 'r.')
+    # plt.title('Noisy GP')
+    # plt.show()
+    # print('End')
+
+
+def plot_gp_2D(gx, gy, mu, X_train, Y_train, title, i):
+
+    ax = plt.gcf().add_subplot(1, 2, i, projection='3d')
+    ax.plot_surface(gx, gy, mu.reshape(gx.shape), cmap=cm.coolwarm, linewidth=0, alpha=0.2, antialiased=False)
+    ax.scatter(X_train[:,0], X_train[:,1], Y_train, c=Y_train, cmap=cm.coolwarm)
+    ax.set_title(title)
     plt.show()
 
