@@ -325,41 +325,42 @@ def prediction(X_test, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigma
 # mu_post_GPR, cov_post_GPR = NIGP_posterior(X, X_train, Y_train, sigma_y=noise_y)
 # plot_gp(mu_post_GPR, cov_post_GPR, X, X_train=X_train, Y_train=Y_train, titles='GPR post init_paras')
 
-def sincsig(x):
-    return np.sin(x)
+if __name__ == "__main__":
+    def sincsig(x):
+        return np.sin(x)
 
-X_train = np.random.random((150, 1)) * 20.0 - 10.0  # generate 150 data points from interval [-10, 10]
-Y_train = sincsig(X_train[:, 0])
+    X_train = np.random.random((150, 1)) * 20.0 - 10.0  # generate 150 data points from interval [-10, 10]
+    Y_train = sincsig(X_train[:, 0])
+    
+    X_std = np.random.random(X_train.shape) * 2.0 + 0.5
+    y_std = 0.1 * np.ones_like(Y_train)
+    Y_train += np.random.normal(0.0, y_std)
+    X_train += np.random.normal(0.0, X_std)
 
-X_std = np.random.random(X_train.shape) * 2.0 + 0.5
-y_std = 0.1 * np.ones_like(Y_train)
-Y_train += np.random.normal(0.0, y_std)
-X_train += np.random.normal(0.0, X_std)
+    noise_y = pow(y_std, 2)
+    noise_x = pow(X_std, 2)
+    # create data by constant interval
+    X_test = np.linspace(-10, 10, 100).reshape(-1, 1)
+    Y_test = sincsig(X_test[:, 0])
 
-noise_y = pow(y_std, 2)
-noise_x = pow(X_std, 2)
-# create data by constant interval
-X_test = np.linspace(-10, 10, 100).reshape(-1, 1)
-Y_test = sincsig(X_test[:, 0])
+    K_nigp = NIGP_slope(X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
 
-K_nigp = NIGP_slope(X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
-
-i=10
-while i<1:
-    res = minimize(nll_fn_nigp(X_train, Y_train, noise_y, noise_x, K_nigp), [1, 1],
-                   bounds=((1e-5, None), (1e-5, None)),
-                   method='L-BFGS-B')
-    l_opt, sigma_f_opt = res.x
-    K_nigp = NIGP_slope(X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
-    i-=1
+    i=10
+    while i<1:
+        res = minimize(nll_fn_nigp(X_train, Y_train, noise_y, noise_x, K_nigp), [1, 1],
+                       bounds=((1e-5, None), (1e-5, None)),
+                       method='L-BFGS-B')
+        l_opt, sigma_f_opt = res.x
+        K_nigp = NIGP_slope(X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
+        i-=1
 
 
-# Compute posterior mean and covariance with o`ptimized kernel parameters and plot the results
-mu_post_NIGP_fit, cov_post_NIGP_fit = NIGP_posterior(X_test, X_train, Y_train, l=l_opt,
-                                                     sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
-plot_gp(mu_post_NIGP_fit, cov_post_NIGP_fit, X_test, X_train=X_train, Y_train=Y_train, titles='NIGPR post fit paras')
+    # Compute posterior mean and covariance with o`ptimized kernel parameters and plot the results
+    mu_post_NIGP_fit, cov_post_NIGP_fit = NIGP_posterior(X_test, X_train, Y_train, l=l_opt,
+                                                         sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
+    plot_gp(mu_post_NIGP_fit, cov_post_NIGP_fit, X_test, X_train=X_train, Y_train=Y_train, titles='NIGPR post fit paras')
 
-print('End')
+    print('End')
 
 
 
