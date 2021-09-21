@@ -335,9 +335,9 @@ if __name__ == "__main__":
     X_train = np.random.random((150, 1)) * 20.0 - 10.0  # generate 150 data points from interval [-10, 10]
     Y_train = sincsig(X_train[:, 0])
 
-    X_train = np.arange(-3, 4, 0.5).reshape(-1, 1)
-    Y_train = np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
-    X_train_obs = X_train + noise_x * np.random.randn(*X_train.shape)
+    # X_train = np.arange(-3, 4, 0.5).reshape(-1, 1)
+    # Y_train = np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
+    # X_train_obs = X_train + noise_x * np.random.randn(*X_train.shape)
 
     Y_train += noise_y * np.random.randn(*X_train.shape)
     X_train += noise_x * np.random.randn(*X_train.shape)
