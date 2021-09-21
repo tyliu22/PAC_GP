@@ -295,8 +295,10 @@ def prediction(X_test, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigma
 # def mean_func(x, I=np.identity(x.shape[0])):
 #     return I.dot(x)
 
+
+
 # ********************************************************************************* #
-#                                                                                   #
+# Start: loading data                                                #
 # ********************************************************************************* #
 """
     tf.Gradient() example test 
@@ -328,7 +330,6 @@ else:
     mu_prior = np.zeros(X.shape)
 cov_prior = kernel(X, X)
 
-
 # std: covariance of noisy_X and noisy_y
 noise_y = 0.4
 noise_x = 0.2
@@ -339,34 +340,29 @@ Y_train = np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
 X_train_obs = X_train + noise_x * np.random.randn(*X_train.shape)
 X_train = X_train_obs
 
-# samples = np.random.multivariate_normal(mu_prior.ravel(), cov_prior, 3)
+
+# ***************************  Standard GP  ******************************* #
 plot_gp(mu_prior, cov_prior, X, X_train=X_train, Y_train=Y_train, titles='GPR prior dis init_paras')
+mu_post_GPR, cov_post_GPR = posterior(X, X_train, Y_train, sigma_y=noise_y)
+
+plot_gp(mu_post_GPR, cov_post_GPR, X, X_train=X_train, Y_train=Y_train, titles='GPR post init_paras')
+
 # Compute mean and covariance of the posterior distribution
 # mu_s, cov_s = posterior(X, X_train, Y_train, sigma_y=noise_y)
 # GPR posterior distribution
-mu_post_GPR, cov_post_GPR = posterior(X, X_train, Y_train, sigma_y=noise_y)
 # mu_post_NIGP, cov_post_NIGP = NIGP_posterior(X, X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
-
 # plot: posterior dis of training dataset, in terms  o f GPR and -NIGPR
 # samples = np.random.multivariate_normal(mu_post_GPR.ravel(), cov_post_GPR, 3)
-plot_gp(mu_post_GPR, cov_post_GPR, X, X_train=X_train, Y_train=Y_train, titles='GPR post init_paras')
-
-# samples = np.random.multivariate_normal(mu_post_NIGP.ravel(), cov_post_NIGP, 3)
-# plot_gp(mu_post_NIGP, cov_post_NIGP, X, X_train=X_train, Y_train=Y_train, samples=samples, titles='NIGPR post init_paras')
-
-
-# NIGP optimization
 # Minimize the negative log-likelihood w.r.t. parameters l and sigma_f.
 # We should actually run the minimization several times with different
 # initializations to avoid local minima but this is skipped here for
 # simplicity. x0 = [1,1]
-res = minimize(nll_fn(X_train, Y_train, noise_y), [1, 1],
-               bounds=((1e-5, None), (1e-5, None)),
-               method='L-BFGS-B')
-
 # Store the optimization results in global variables so that we can
 # compare it later with the results from other implementations.
 # hyperparameters: lengthscale - l_opt and sigma_f - sigma_f_opt
+res = minimize(nll_fn(X_train, Y_train, noise_y), [1, 1],
+               bounds=((1e-5, None), (1e-5, None)),
+               method='L-BFGS-B')
 l_opt, sigma_f_opt = res.x
 
 # Compute posterior mean and covariance with optimized kernel parameters and plot the results
@@ -374,12 +370,53 @@ mu_post_GPR_fit, cov_post_GPR_fit = posterior(X, X_train, Y_train, l=l_opt,
                                               sigma_f=sigma_f_opt, sigma_y=noise_y)
 plot_gp(mu_post_GPR_fit, cov_post_GPR_fit, X, X_train=X_train, Y_train=Y_train, titles='GPR post fit paras')
 
-
-mu_post_NIGP_fit, cov_post_NIGP_fit = NIGP_posterior(X, X_train, Y_train, l=l_opt,
-                                                     sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
-plot_gp(mu_post_NIGP_fit, cov_post_NIGP_fit, X, X_train=X_train, Y_train=Y_train, titles='NIGPR post fit paras')
-
 print('End')
+
+
+
+
+
+# ***************************  NIGP  ******************************* #
+
+
+# samples = np.random.multivariate_normal(mu_post_NIGP.ravel(), cov_post_NIGP, 3)
+# plot_gp(mu_post_NIGP, cov_post_NIGP, X, X_train=X_train, Y_train=Y_train, samples=samples, titles='NIGPR post init_paras')
+
+#
+# mu_post_GPR, cov_post_GPR = NIGP_posterior(X, X_train, Y_train, sigma_y=noise_y)
+# # plot_gp(mu_post_GPR, cov_post_GPR, X, X_train=X_train, Y_train=Y_train, titles='GPR post init_paras')
+#
+# # Compute mean and covariance of the posterior distribution
+# # mu_s, cov_s = posterior(X, X_train, Y_train, sigma_y=noise_y)
+# # GPR posterior distribution
+# # mu_post_NIGP, cov_post_NIGP = NIGP_posterior(X, X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
+# # plot: posterior dis of training dataset, in terms  o f GPR and -NIGPR
+# # samples = np.random.multivariate_normal(mu_post_GPR.ravel(), cov_post_GPR, 3)
+# # Minimize the negative log-likelihood w.r.t. parameters l and sigma_f.
+# # We should actually run the minimization several times with different
+# # initializations to avoid local minima but this is skipped here for
+# # simplicity. x0 = [1,1]
+# # Store the optimization results in global variables so that we can
+# # compare it later with the results from other implementations.
+# # hyperparameters: lengthscale - l_opt and sigma_f - sigma_f_opt
+# res = minimize(nll_fn(X_train, Y_train, noise_y), [1, 1],
+#                bounds=((1e-5, None), (1e-5, None)),
+#                method='L-BFGS-B')
+# l_opt, sigma_f_opt = res.x
+#
+# # Compute posterior mean and covariance with optimized kernel parameters and plot the results
+# mu_post_GPR_fit, cov_post_GPR_fit = posterior(X, X_train, Y_train, l=l_opt,
+#                                               sigma_f=sigma_f_opt, sigma_y=noise_y)
+#
+#
+#
+#
+#
+# mu_post_NIGP_fit, cov_post_NIGP_fit = NIGP_posterior(X, X_train, Y_train, l=l_opt,
+#                                                      sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
+# plot_gp(mu_post_NIGP_fit, cov_post_NIGP_fit, X, X_train=X_train, Y_train=Y_train, titles='NIGPR post fit paras')
+#
+# print('End')
 
 
 
