@@ -13,14 +13,11 @@ from numpy.linalg import inv
 from numpy.linalg import cholesky, det
 from scipy.linalg import solve_triangular
 from scipy.optimize import minimize
-# from matplotlib import animation, cm
 # import tensorflow as tf
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
-# scikit learn package
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import ConstantKernel, RBF
+
 
 def plot_gp(mu, cov, X, X_train=None, Y_train=None, titles='GPR plot'):
     # X: test data:  X_train and y_train: training data and labels
@@ -208,8 +205,8 @@ def NIGP_slope(X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigma_x=1e-8)
     # Equation (7): posterior distribution mean
     mu_s = K.T.dot(K_inv).dot(Y_train)
 
-    SIGMA_x = sigma_x**2 * np.eye(len(X_train))
-    K_regu = grad_posterior_mean[0].T.dot(SIGMA_x).dot(grad_posterior_mean[0])
+    SIGMA_x = sigma_x**2 * np.eye(len(X_train[1]))
+    K_regu = grad_posterior_mean[0].dot(grad_posterior_mean[0].T)*SIGMA_x
     K_nigp = K + K_regu
 
     return K_nigp, K_regu
@@ -326,39 +323,32 @@ def prediction(X_test, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigma
 # plot_gp(mu_post_GPR, cov_post_GPR, X, X_train=X_train, Y_train=Y_train, titles='GPR post init_paras')
 
 if __name__ == "__main__":
-    def sincsig(x):
-        return np.sin(x)
-
     noise_x = 0.5
     noise_y = 0.1
 
-    X_train = np.random.random((150, 1)) * 20.0 - 10.0  # generate 150 data points from interval [-10, 10]
-    Y_train = sincsig(X_train[:, 0])
+    X_train = (np.random.random((150, 1)) * 20.0 - 10.0).reshape(-1, 1) # generate 150 data points from interval [-10, 10]
 
     # X_train = np.arange(-3, 4, 0.5).reshape(-1, 1)
     # Y_train = np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
     # X_train_obs = X_train + noise_x * np.random.randn(*X_train.shape)
 
-    Y_train += noise_y * np.random.randn(*X_train.shape)
+    Y_train = np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
     X_train += noise_x * np.random.randn(*X_train.shape)
 
-    noise_y = pow(y_std, 2)
-    noise_x = pow(X_std, 2)
-    # create data by constant interval
     X_test = np.linspace(-10, 10, 100).reshape(-1, 1)
-    Y_test = sincsig(X_test[:, 0])
+    Y_test = np.sin(X_test)
 
-    K_nigp = NIGP_slope(X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
+    K_nigp, K_regu = NIGP_slope(X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
 
+    l_opt, sigma_f_opt = 1.0, 1.0
     i=10
-    while i<1:
-        res = minimize(nll_fn_nigp(X_train, Y_train, noise_y, noise_x, K_nigp), [1, 1],
+    while i>1:
+        res = minimize(nll_fn_nigp(X_train, Y_train, noise_y, noise_x, K_nigp), [l_opt, sigma_f_opt],
                        bounds=((1e-5, None), (1e-5, None)),
                        method='L-BFGS-B')
         l_opt, sigma_f_opt = res.x
-        K_nigp = NIGP_slope(X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
+        K_nigp, K_regu = NIGP_slope(X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
         i-=1
-
 
     # Compute posterior mean and covariance with o`ptimized kernel parameters and plot the results
     mu_post_NIGP_fit, cov_post_NIGP_fit = NIGP_posterior(X_test, X_train, Y_train, l=l_opt,
