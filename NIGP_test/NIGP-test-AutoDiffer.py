@@ -37,6 +37,7 @@ if __name__ == "__main__":
     # K = kernel_Tensor(X1=VAR_X_train) + sigma_y ** 2 * tf.eye(len(X_train), dtype=tf.float64)
     # mu_s_old = tf.matmul(tf.matmul(K, K_inv, transpose_a=True), Y_train)
 
+
     mu_s_old = kernel_Tensor(VAR_X_train)
 
     var_grad = tf.gradients(mu_s_old, VAR_X_train)
