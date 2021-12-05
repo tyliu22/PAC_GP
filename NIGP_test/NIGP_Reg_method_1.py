@@ -1,23 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov 30 11:21:25 2016
-@author: Aleksander
+    Created on Wed Nov 30 11:21:25 2016
+    @author: Aleksander
 
-Paper implementation : "Gaussian Process Training with Input Noise"
-Parameters:
-    var_x: input noise variance
-    var_y: output noise variance
-    varf : kernal hyperparameter sigma_f
-    l    : kernal hyperparameter lengthscale   or   parameter set
-    K    :
-    k1   :
-    k2   :
+    Function:
+        Implementation approach of Noisy Input Gaussian Processing (NIGP); also the Paper implementation :
+            "Gaussian Process Training with Input Noise"
+
+        Direct calculate the posterior mean and covariance of GP, even the posterior distribution is unknown
+
+    Parameters:
+        var_x: input noise variance
+        var_y: output noise variance
+        varf : kernal hyperparameter sigma_f
+        l    : kernal hyperparameter lengthscale   or   parameter set
 
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+import matplotlib
 import math
 from scipy.spatial.distance import cdist, pdist, squareform
 from scipy.optimize import minimize
@@ -73,7 +76,9 @@ class GPRegressor:
         else:
             return mean, 0.0
 
+    #  kernel  and  autokernel   same shape with different data
     def kernel(self, X1, X2, var_x1, var_x2, l, varf): # K(x_star,X)  kernal func
+        # Equation 9 in NIGPf
         # squared exponential kernel with Automatic Relevance Determination
         tmp = 0.0
         tmp2 = 1.0
@@ -87,7 +92,6 @@ class GPRegressor:
         return varf * np.power(tmp2, -0.5) * np.exp(-0.5 * tmp)
 
     def autokernel(self, X, var_x, l, varf): # (self.X_train, self.var_x, l, varf)
-        # Equation 9 in NIGP
         tmp = 0.0
         tmp2 = 1.0
         l = l * np.ones(len(self.X_train[0, :])) # diagonal matrix of the kernal
@@ -98,8 +102,6 @@ class GPRegressor:
             tmp += d1 / (l2 + d2) # (N*N)
             tmp2 *= (1.0 + d2 / l2) # (N*N) sigma_f^2 * sqrt[Sigma_x in v(Lambda) + I] * exp(-0.5*(x_i-x_j))
         return varf * np.power(tmp2, -0.5) * np.exp(-0.5 * tmp)
-
-        # X_train - Input data (num_samples, num_features)
 
     # y_train - Output data (num_samples)
     # var_x - Variance in input points x
@@ -131,22 +133,27 @@ class GPRegressor:
             for i in range(0, len(l_bounds)):
                 bounds.append(l_bounds[i])
             best_f = 1e6
+            # repeat many times to get better parameters
             for j in range(0, self.num_restarts):
                 loglb = np.log10(l_bounds[:, 0])
                 loghb = np.log10(l_bounds[:, 1])
                 l0 = loglb + (loghb - loglb) * np.random.random(size=loglb.shape)
                 l0 = 10.0 ** l0
 
-                res = minimize(self.neg_log_marginal_likelihood, l0, method='l-bfgs-b', bounds=bounds, tol=1e-12,
+                res = minimize(self.neg_log_marginal_likelihood, l0,
+                               method='l-bfgs-b',
+                               bounds=bounds,
+                               tol=1e-12,
                                options={'disp': False, 'eps': 0.001})
                 # res: final optimized parameters; l0 is the initialize parameter
                 if res['fun'] < best_f:
-                    self.varf = res['x'][0]    # output variance
+                    self.varf = res['x'][0]    # kernal hyper-parameter
                     self.alpha = res['x'][1]   # varn in nlml function
                     self.l = res['x'][2::]     # lengthscale parameter for kernal
                     self.opt_params = res['x'] #
-                # print("iter: " + str(j) + ". params: " + "Output variance：" + str(self.varf) +
-                      # ", " + str(self.alpha) + ", " + str(self.l))
+                print("iter: " + str(j) + ". params: " + "Output variance：" + "varf: " + str(self.varf) +
+                      ", alpha: " + str(self.alpha) + ", l: " + str(self.l))
+
             self.var_y += self.alpha
         # Calculate factors needed for prediction.
         # K1 = K(X,X)
@@ -180,6 +187,10 @@ if __name__ == "__main__":
     def sincsig(x):
         return np.sin(x)
 
+    np.random.seed(9527)
+    Fig_path = '/Users/tianyuliu/PycharmProjects/PAC_GP/Results_fig/'
+
+
     X_train = np.random.random((150, 1)) * 20.0 - 10.0 # generate 150 data points from interval [-10, 10]
     y_train = sincsig(X_train[:, 0])
     # y_train = sincsig(X_train[:, 0])
@@ -188,55 +199,71 @@ if __name__ == "__main__":
     y_std = 0.1 * np.ones_like(y_train)
     y_train += np.random.normal(0.0, y_std)
     X_train += np.random.normal(0.0, X_std)
-    # y = sin(x) + noise_y
-    # x_train = x + noise_x
 
     # create data by constant interval
     Xcv = np.linspace(-10, 10, 100).reshape(-1, 1)
     ycv = sincsig(Xcv[:, 0])
 
+    # **************************  GPR ************************ #
     print('Start standard GP')
     l_bounds = np.array([[0.01, 0.3], [0.02, 0.2], [0.1, 5.0]])
     gp = GPRegressor(1, 1, num_restarts_hyper=10)
     gp.fit(X_train, y_train, 0.0, 0.0, l_bounds=l_bounds)
     yp, std = gp.predict(Xcv, True)
     print('End standard GP')
-    # print
-    # np.sqrt(np.average((yp - ycv) ** 2))
 
-    plot_gp(yp, std, Xcv, X_train=X_train, Y_train=y_train, title='GP')
-    # plt.figure()
-    # plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
-    # plt.plot(Xcv[:, 0], sincsig(Xcv))
-    # plt.plot(X_train[:, 0], y_train, 'r.')
-    # plt.title('Regular GP')
-    # plt.show()
+    # **************************  GPR plot ************************ #
+
+    plt.figure(figsize=(6, 4))
+    plt.style.use('bmh')
+    fontsize = 11
+    fontfamily = 'Times New Roman'
+    matplotlib.rcParams['font.size'] = fontsize
+    matplotlib.rcParams['font.family'] = fontfamily
+    plt.fill_between(Xcv[:, 0], yp - 1.96 * std, yp + 1.96 * std, alpha=0.2)
+    plt.plot(Xcv[:, 0], yp, '-', label='Estimation')
+    plt.plot(Xcv[:, 0], sincsig(Xcv), '--', label='Real data')
+    # plt.legend(['With input noisy', 'Without input noisy'], loc='best')
+    plt.legend(loc='best')
+    plt.xlabel('Test input')
+    plt.ylabel('Output')
+
+    plt.savefig(fname=Fig_path+"Reprod_method1_GPR_4_noisy_input.pdf", format="pdf")
+    plt.show()
 
 
+
+
+
+    # **************************  NIGP ************************ #
     print('Start NIGP')
     l_bounds = np.array([[0.01, 0.3], [0.01, 0.1], [0.1, 5.0]])
     gp = GPRegressor(1, 1, num_restarts_hyper=10)
     gp.fit(X_train, y_train, X_std ** 2, 0.0, l_bounds=l_bounds)
     yp, std = gp.predict(Xcv, True)
     print('End NIGP')
-    # print
-    # np.sqrt(np.average((yp - ycv) ** 2))
-
-    plot_gp(yp, std, Xcv, X_train=X_train, Y_train=y_train, title='NIGP')
-    # plt.figure()
-    # plt.errorbar(Xcv[:, 0], yp, yerr=2 * std)
-    # plt.plot(Xcv[:, 0], sincsig(Xcv))
-    # plt.plot(X_train[:, 0], y_train, 'r.')
-    # plt.title('Noisy GP')
-    # plt.show()
-    # print('End')
 
 
-def plot_gp_2D(gx, gy, mu, X_train, Y_train, title, i):
+    # **************************  NIGPR plot ************************ #
 
-    ax = plt.gcf().add_subplot(1, 2, i, projection='3d')
-    ax.plot_surface(gx, gy, mu.reshape(gx.shape), cmap=cm.coolwarm, linewidth=0, alpha=0.2, antialiased=False)
-    ax.scatter(X_train[:,0], X_train[:,1], Y_train, c=Y_train, cmap=cm.coolwarm)
-    ax.set_title(title)
+    plt.figure(figsize=(6, 4))
+    plt.style.use('bmh')
+    fontsize = 11
+    fontfamily = 'Times New Roman'
+    matplotlib.rcParams['font.size'] = fontsize
+    matplotlib.rcParams['font.family'] = fontfamily
+    plt.fill_between(Xcv[:, 0], yp - 1.96 * std, yp + 1.96 * std, alpha=0.2)
+    plt.plot(Xcv[:, 0], yp, '-', label='Estimation')
+    plt.plot(Xcv[:, 0], sincsig(Xcv), '--', label='Real data')
+    # plt.legend(['With input noisy', 'Without input noisy'], loc='best')
+    plt.legend(loc='best')
+    plt.xlabel('Test input')
+    plt.ylabel('Output')
+
+    plt.savefig(fname=Fig_path+"Reprod_method1_NIGPR_4_noisy_input.pdf",format="pdf")
     plt.show()
+
+
+    print('End')
+
 

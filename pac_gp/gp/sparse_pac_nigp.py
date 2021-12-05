@@ -435,28 +435,6 @@ class PAC_GP_BASE(Configurable):
                                                    self.min_log, self.max_log,
                                                    self.rounding_digits)
 
-class PAC_FULL_GP_BASE(PAC_GP_BASE):
-
-    def __init__(self, *args, **kwargs):
-        super(PAC_FULL_GP_BASE, self).__init__(*args, **kwargs)
-
-    def _generate_gp_ops(self):
-        # Set up GP model, and calculate the prior and posterior distribution
-        self.gp = GPR(self.X_tf, self.Y_tf, self.sn2_tf,
-                      self.kernel, self.mean_function)
-
-        # P: GP prior (based on training data X)
-        self.P_mean = self.mean_function(self.X_tf)    # (num_data, output_dim)
-        self.P_mean = tf.squeeze(self.P_mean)          # ONLY VALID FOR output_dim == 1
-        self.P_cov = self.kernel.K(self.X_tf)          # (num_data, num_data)
-        self.P_cov += tf.eye(tf.shape(self.X_tf)[0], dtype=tf.float64) * self.jitter
-
-        # Q: GP posterior._generate_prediction_ops
-        self.Q_mean, self.Q_cov = self.gp._build_predict_f(self.X_tf, full_cov=True)
-        self.Q_mean = tf.squeeze(self.Q_mean)           # ONLY VALID FOR output_dim == 1
-        self.Q_cov = tf.squeeze(self.Q_cov)             # ONLY VALID FOR output_dim == 1
-        self.Q_cov += tf.eye(tf.shape(self.X_tf)[0], dtype=tf.float64) * self.jitter
-
 
 class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
 
@@ -509,91 +487,6 @@ class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
 # Actual PAC GP implementations based on the base classes above
 # These classes should be instantiated
 
-
-class PAC_HYP_GP(PAC_FULL_GP_BASE):
-    """ Full GP optimizing kernel hyperparameters
-    """
-    def __init__(self, *args, **kwargs):
-        super(PAC_HYP_GP, self).__init__(*args, **kwargs)
-
-    def _get_parameter_shapes(self):
-        # Kernel lengthscale shape
-        if self.kernel.ARD is True:
-            lengthscales_shape = (self.input_dim, )
-        else:
-            lengthscales_shape = (1, )
-
-        shapes = [lengthscales_shape,
-                  (1, ),
-                  (1, )]
-        return shapes
-
-    def _get_optimization_x0(self):
-        # Reshape kernel hyperparameters (input_dim + 2)
-        # into 1D optimization vector x
-        variables = [self.pos_trans.backward(self.kernel.lengthscale),
-                     self.pos_trans.backward(self.kernel.variance),
-                     self.pos_trans.backward(self.sn2)]
-        variables = flatten(variables)
-        return variables
-
-    def _get_bounds(self):
-        # for optimize() "L-BFGS-B": bounds for variables
-        x_min = self.pos_trans.backward(np.exp(self.min_log))
-        x_max = self.pos_trans.backward(np.exp(self.max_log))
-
-        if self.kernel.lengthscale.ndim==0:
-            bounds = 2 * [[x_min, x_max]]
-        else:
-            bounds = (self.kernel.lengthscale.shape[0]+1) * [[x_min, x_max]]
-        bounds.append([None, None])
-        return bounds
-
-    def _get_optimization_feed(self, x):
-        # Distribute 1D optimization vector x
-        # into individual model variables
-        shapes = self._get_parameter_shapes()
-        res = expand_vector(x, shapes)
-
-        feed = {
-                self.X_tf: self.X,
-                self.Y_tf: self.Y,
-                self.epsilon_tf: self.epsilon,
-                self.delta_tf: self.delta,
-                self.kernel.variance_unc_tf: res[1],
-                self.kernel.lengthscales_unc_tf: res[0],
-                self.sn2_unc_tf: res[2],
-                self.num_hyps_tf: self.num_hyps,
-                self.min_log_tf: self.min_log,
-                self.max_log_tf: self.max_log,
-                self.rounding_digits_tf: self.rounding_digits
-               }
-        return feed
-
-    def _set_variables(self, x):
-        shapes = self._get_parameter_shapes()
-        res = expand_vector(x, shapes)
-
-        self.kernel.lengthscale = self.pos_trans.forward(res[0])
-        self.kernel.variance = self.pos_trans.forward(res[1])
-        self.sn2 = self.pos_trans.forward(res[2])
-        self.round_hyps()
-
-    def _generate_optimization_ops(self):
-        # I'M PRETTY SURE WE NEED THE GRADIENT WITH RESPECT TO UNCONSTRAINED PARAMS
-        # variables = [self.kernel.lengthscales_tf,
-        #              self.kernel.variance_tf,
-        #              self.sn2_tf]
-
-        # If considering the noisy input Gaussian process, add the extra item as the variable
-        variables = [self.kernel.lengthscales_unc_tf,
-                     self.kernel.variance_unc_tf,
-                     self.sn2_unc_tf]
-        if self.method == 'bkl':
-            self.objective = self.upper_bound_bkl
-        else:
-            self.objective = self.upper_bound
-        self.objective_grad = tf.gradients(self.objective, variables)
 
 
 

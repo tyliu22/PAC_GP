@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 
 from gp.mean_functions import Zero
 from gp.kerns import RBF
-from gp.pac_gp import PAC_INDUCING_HYP_GP
+from gp.pac_gp import PAC_INDUCING_HYP_GP, PAC_HYP_GP
+from gp.pac_nigp import NIGP_PAC_HYP_GP
 
 from utils.data_generator import generate_sin_data
 
@@ -46,48 +47,79 @@ x_data, y_data = generate_sin_data(N_train, x_min+dx, x_max-dx,
 x_true, y_true = generate_sin_data(N_test, x_min, x_max, None,
                                    random_order=False)
 
-#
 # noise_eps = np.random.normal(loc=0.0, scale=np.sqrt(0.25),
 #                        size=x_data.shape)
 # x_data = x_data + noise_eps
 
 # %% Set up and train GPy model for comparison
 
-kernel = GPy.kern.RBF(input_dim=D, ARD=True)
 
-full_gpy = GPy.models.GPRegression(x_data, y_data, kernel=kernel)
-full_gpy.optimize()
 
-sparse_gpy = GPy.models.SparseGPRegression(x_data, y_data,
-                                           kernel=kernel, num_inducing=M)
-sparse_gpy.optimize()
+# kernel = GPy.kern.RBF(input_dim=D, ARD=True)
+#
+# full_gpy = GPy.models.GPRegression(x_data, y_data, kernel=kernel)
+# full_gpy.optimize()
+#
+# sparse_gpy = GPy.models.SparseGPRegression(x_data, y_data,
+#                                            kernel=kernel, num_inducing=M)
+# sparse_gpy.optimize()
+#
+# # Initialize GP parameters from optimized sparse GP model (GPy)
+# sf2_gpy = sparse_gpy.rbf.variance.values
+# sn2_gpy = sparse_gpy.Gaussian_noise.variance.values
+# lengthscales_gpy = sparse_gpy.rbf.lengthscale.values
+# z_gpy = sparse_gpy.inducing_inputs.values
 
-# Initialize GP parameters from optimized sparse GP model (GPy)
-sf2_gpy = sparse_gpy.rbf.variance.values
-sn2_gpy = sparse_gpy.Gaussian_noise.variance.values
-lengthscales_gpy = sparse_gpy.rbf.lengthscale.values
-z_gpy = sparse_gpy.inducing_inputs.values
 
 
 
 # %% Set up and train PAC-GP model
 
 kern = RBF(D)
-mean = Zero()
-pac_gp = PAC_INDUCING_HYP_GP(X=x_data, Y=y_data, Z=z_gpy,
-                             sn2=sn2_gpy,
-                             kernel=kern, mean_function=mean,
-                             epsilon=epsilon_np, delta=delta_np,
-                             verbosity=0,
-                             method='bkl', loss='01_loss')
+mean = Zero() # mean function: zwro()
+
+noise_input_variance = np.ndarray(shape=(1,1), dtype=np.float64)
+# To create an array with the same size of sn2_gpy,which is the original one
+sn2_nigpy = np.array([[0.01]], dtype=np.float64).reshape(1,)
+
+# pac_gp = PAC_INDUCING_HYP_GP(X=x_data, Y=y_data, Z=z_gpy,
+#                              sn2=sn2_gpy,
+#                              kernel=kern, mean_function=mean,
+#                              epsilon=epsilon_np, delta=delta_np,
+#                              verbosity=0,
+#                              method='bkl', loss='01_loss')
+# Parameter
+# (self, X, Y, Z, sn2, kernel=None, mean_function=None,
+#                  epsilon=0.2, delta=0.01, verbosity=0, method='bkl',loss='01_loss')
+
+# pac_gp = PAC_HYP_GP(X=x_data, Y=y_data,
+#                     sn2=sn2_gpy,
+#                     kernel=kern, mean_function=mean,
+#                     epsilon=epsilon_np, delta=delta_np,
+#                     verbosity=0,
+#                     method='bkl', loss='01_loss')
+
+pac_gp = NIGP_PAC_HYP_GP(X=x_data, Y=y_data,
+                         sn2=sn2_nigpy,
+                         kernel=kern, mean_function=mean,
+                         epsilon=epsilon_np, delta=delta_np,
+                         verbosity=0,
+                         method='bkl', loss='01_loss',
+                         noise_input_variance=noise_input_variance)
+
+# Parameter
+# (self, X, Y, sn2, kernel=None, mean_function=None,
+#                  epsilon=0.2, delta=0.01, verbosity=0, method='bkl',
+#                  loss='01_loss', noise_input_variance=None)
 pac_gp.optimize()
-Z_opt = pac_gp.Z
+# Z_opt = pac_gp.Z
 
 # %% Predict on test data
 
+#
+# y_mean_full_gpy, y_var_full_gpy = full_gpy.predict(x_true)
+# y_mean_sparse_gpy, y_var_sparse_gpy = sparse_gpy.predict(x_true)
 
-y_mean_full_gpy, y_var_full_gpy = full_gpy.predict(x_true)
-y_mean_sparse_gpy, y_var_sparse_gpy = sparse_gpy.predict(x_true)
 y_mean_pac_gp, y_var_pac_gp = pac_gp.predict(Xnew=x_true, full_cov=False)
 
 # %% Plot data and GPy/GP tf predictions including PAC GP
@@ -144,8 +176,8 @@ plt.fill_between(np.squeeze(x_true), y-error, y+error, color='C2', alpha=0.3)
 
 plt.plot(np.squeeze(z_gpy), -1.5 * np.ones((M, )), 'o',
          color='C3', label='GPy inducing inputs')
-plt.plot(np.squeeze(Z_opt), -1.5 * np.ones((M, )), 'o',
-         color='C4', label='PAC GP inducing inputs')
+# plt.plot(np.squeeze(Z_opt), -1.5 * np.ones((M, )), 'o',
+#          color='C4', label='PAC GP inducing inputs')
 plt.xlabel('input $x$')
 plt.ylabel('output $y$')
 plt.grid()

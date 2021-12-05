@@ -1,25 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-Copyright (c) 2018 Robert Bosch GmbH
-All rights reserved.
+    Function:
+        RBF_ARD():
+            para:
+                lengthscales:
+                sigma       :
+            Input:
+                X : training data
+                X2: test data
+    Setting:
 
-This source code is licensed under the MIT license found in the
-LICENSE file in the root directory of this source tree.
+    Modified based on @author: carlos's code in Noisy input Gaussian processing classification project
 
-@author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 import abc
 import numpy as np
 import tensorflow as tf
 from utils.transformations import Log1pe
 
-"""
-The following snippets are derived from GPFlow V 1.0
-  (https://github.com/GPflow/GPflow)
-Copyright 2017 st--, Mark van der Wilk, licensed under the Apache
-License, Version 2.0, cf. 3rd-party-licenses.txt file in the root directory
-of this source tree.
-"""
 
 
 class Kernel(object):
@@ -27,7 +25,6 @@ class Kernel(object):
     Generic Kernel class
     '''
     __metaclass__ = abc.ABCMeta
-
     _jitter = 1e-10
 
     def __init__(self, jitter=1e-10):
@@ -48,7 +45,7 @@ class Kernel(object):
 class RBF:
     def __init__(self, input_dim, variance=1.0, lengthscale=None, ARD=True):
         with tf.name_scope('kern'):
-            # convert input to at least 1-dimensional arrays
+
             self.variance = np.atleast_1d(variance)
 
             if lengthscale is not None:
@@ -107,7 +104,6 @@ class RBF:
             return -2 * tf.matmul(X, X2, transpose_b=True) + \
                 tf.reshape(Xs, (-1, 1)) + tf.reshape(X2s, (1, -1))
 
-
     def euclid_dist(self, X, X2):
         r2 = self.square_dist(X, X2)
         return tf.sqrt(r2 + 1e-12)
@@ -120,24 +116,25 @@ class RBF:
         return self.variance_tf * tf.exp(-self.square_dist(X, X2) / 2)
 
 
-class RBF_ARD(Kernel):
+
+class RBF_ARD():
     """
     The radial basis function (RBF) or squared exponential kernel
     """
-
     def __init__(self, lengthscales, sigma, jitter=1e-3):
+        # super(RBF_ARD, self).__init__(jitter)
+        # self.lengthscales = lengthscales
+        # self.sigma = sigma
 
-        super(RBF_ARD, self).__init__(jitter)
+        self.lengthscales = tf.Variable(lengthscales, dtype=tf.float64)
+        self.sigma = tf.Variable(sigma, dtype=tf.float64)
 
-        self.lengthscales = tf.Variable(lengthscales, dtype=tf.float32)
-        # self.log_sigma0 = tf.Variable([log_sigma0], dtype=tf.float32)
-        self.sigma = tf.Variable([sigma], dtype=tf.float32)
-        self.jitter = tf.constant([jitter], dtype=tf.float32)
+        self.jitter = tf.constant([jitter], dtype=tf.float64)
 
     def kernel(self, X, X2=None):
-
         """
         This function computes the covariance matrix for the GP
+            tf.square(): calculate the square of each elements
         """
 
         if X2 is None:
@@ -154,7 +151,7 @@ class RBF_ARD(Kernel):
         value2 = tf.expand_dims(tf.reduce_sum(tf.square(X2), 1), 1)
         distance = value - 2 * tf.matmul(X, tf.transpose(X2)) + tf.transpose(value2)
 
-        return tf.exp(self.log_sigma) * tf.exp(-0.5 * distance) + white_noise
+        return tf.exp(self.sigma) * tf.exp(-0.5 * distance) + white_noise
 
     def get_params(self):
         return [self.lengthscales, self.sigma]
@@ -164,6 +161,36 @@ class RBF_ARD(Kernel):
 
     def get_var_points(self, data_points):
         return tf.ones([tf.shape(data_points)[0]]) * tf.exp(self.sigma) + (self.jitter)
+
+
+
+
+# calculate the kernel function TENSOR
+# one dimension tensor
+def kernel_Tensor(X1, X2=None, l=1.0, sigma_f=1.0):
+    """
+    Isotropic squared exponential kernel.
+
+    Args:
+        X1: Array of m points (m x d).
+        X2: Array of n points (n x d).
+
+    Returns:
+        (m x n) matrix.
+    """
+
+    X1 = X1 / l
+    Xs = tf.reduce_sum(tf.square(X1), 1)
+    if X2 is None:
+        temp = tf.reshape(Xs, (-1, 1)) + tf.reshape(Xs, (1, -1)) + \
+               -2 * tf.matmul(X1, X1, transpose_b=True)
+    else:
+        X2 = X2 / l
+        X2s = tf.reduce_sum(tf.square(X2), 1)
+        temp = -2 * tf.matmul(X1, X2, transpose_b=True) + \
+               tf.reshape(Xs, (-1, 1)) + tf.reshape(X2s, (1, -1))
+
+    return sigma_f**2 * tf.exp(-temp / 2)
 
 
 
