@@ -94,33 +94,33 @@ class Transform(ITransform):  # pylint: disable=W0223
         return Chain(self, other_transform)
 
 
-class Chain(Transform):
-    """
-    Chain two transformations together:
-    .. math::
-       y = t_1(t_2(x))
-    where y is the natural parameter and x is the free state
-    """
-
-    def __init__(self, t1, t2):
-        self.t1 = t1
-        self.t2 = t2
-
-    def forward_tensor(self, x):
-        return self.t1.forward_tensor(self.t2.forward_tensor(x))
-
-    def forward(self, x):
-        return self.t1.forward(self.t2.forward(x))
-
-    def backward(self, y):
-        return self.t2.backward(self.t1.backward(y))
-
-    def log_jacobian_tensor(self, x):
-        return self.t1.log_jacobian_tensor(self.t2.forward_tensor(x)) +\
-               self.t2.log_jacobian_tensor(x)
-
-    def __str__(self):
-        return "{} {}".format(self.t1.__str__(), self.t2.__str__())
+# class Chain(Transform):
+#     """
+#     Chain two transformations together:
+#     .. math::
+#        y = t_1(t_2(x))
+#     where y is the natural parameter and x is the free state
+#     """
+#
+#     def __init__(self, t1, t2):
+#         self.t1 = t1
+#         self.t2 = t2
+#
+#     def forward_tensor(self, x):
+#         return self.t1.forward_tensor(self.t2.forward_tensor(x))
+#
+#     def forward(self, x):
+#         return self.t1.forward(self.t2.forward(x))
+#
+#     def backward(self, y):
+#         return self.t2.backward(self.t1.backward(y))
+#
+#     def log_jacobian_tensor(self, x):
+#         return self.t1.log_jacobian_tensor(self.t2.forward_tensor(x)) +\
+#                self.t2.log_jacobian_tensor(x)
+#
+#     def __str__(self):
+#         return "{} {}".format(self.t1.__str__(), self.t2.__str__())
 
 
 class Log1pe(Transform):
@@ -149,11 +149,18 @@ class Log1pe(Transform):
         Implementation of softplus. Overflow avoided by use of the logaddexp
         function.
         self._lower is added before returning.
+        np.logaddexp(arr1, arr2） = log(exp(arr1) + exp(arr2))
+        np.logaddexp(   0, arr2） = log(exp(arr2) + 1 )
         """
-        return np.logaddexp(0, x) + self._lower
+        return x + self._lower
+        # return np.logaddexp(0, x) + self._lower
 
     def forward_tensor(self, x):
-        return tf.nn.softplus(x) + self._lower
+        """
+        nn.softplus(x） = log( exp(x) + 1 )
+        """
+        return x + self._lower
+        # return tf.nn.softplus(x) + self._lower
 
     def log_jacobian_tensor(self, x):
         return tf.negative(tf.reduce_sum(tf.nn.softplus(tf.negative(x))))
@@ -185,92 +192,93 @@ class Log1pe(Transform):
 
         """
         ys = np.maximum(y - self._lower, np.finfo(np.float64).eps)
-        return ys + np.log(-np.expm1(-ys))
+        return y
+        # return ys + np.log(-np.expm1(-ys))
 
     def __str__(self):
         return '+ve'
 
-
-class LowerTriangular(Transform):
-    """
-    A transform of the form
-
-       tri_mat = vec_to_tri(x)
-
-    x is a free variable, y is always a list of lower triangular matrices sized
-    (N x N x D).
-    """
-
-    def __init__(self, N, num_matrices=1, squeeze=False):
-        """
-        Create an instance of LowerTriangular transform.
-        Args:
-            N the size of the final lower triangular matrices.
-            num_matrices: Number of matrices to be stored.
-            squeeze: If num_matrices == 1, drop the redundant axis.
-        """
-        # We need to store this for reconstruction.
-        self.num_matrices = num_matrices
-        self.squeeze = squeeze
-        self.N = N
-
-    def _validate_vector_length(self, length):
-        """
-        Check whether the vector length is consistent with being a triangular
-         matrix and with `self.num_matrices`.
-        Args:
-            length: Length of the free state vector.
-
-        Returns: Length of the vector with the lower triangular elements.
-
-        """
-        L = length / self.num_matrices
-        if int(((L * 8) + 1) ** 0.5) ** 2.0 != (L * 8 + 1):
-            raise ValueError("The free state must be a triangle number.")
-        return L
-
-    def forward(self, x):
-        """
-        Transforms from the free state to the variable.
-        Args:
-            x: Free state vector. Must have length of `self.num_matrices` *
-                triangular_number.
-
-        Returns:
-            Reconstructed variable.
-        """
-        L = self._validate_vector_length(len(x))
-        matsize = int((L * 8 + 1) ** 0.5 * 0.5 - 0.5)
-        xr = np.reshape(x, (self.num_matrices, -1))
-        var = np.zeros((matsize, matsize, self.num_matrices), np.float64)
-        for i in range(self.num_matrices):
-            indices = np.tril_indices(matsize, 0)
-            indices += (np.zeros(len(indices[0])).astype(int) + i,)
-            var[indices] = xr[i, :]
-        return var.squeeze() if self.squeeze else var
-
-    def backward(self, y):
-        """
-        Transforms from the variable to the free state.
-        Args:
-            y: Variable representation.
-
-        Returns:
-            Free state.
-        """
-        N = int(np.sqrt(y.size / self.num_matrices))
-        reshaped = np.reshape(y, (N, N, self.num_matrices))
-        size = len(reshaped)
-        triangular = reshaped[np.tril_indices(size, 0)].T
-        return triangular
-
-    def forward_tensor(self, x):
-        reshaped = tf.reshape(x, (self.num_matrices, -1))
-        fwd = tf.transpose(vec_to_tri(reshaped, self.N), [1, 2, 0])
-        return tf.squeeze(fwd) if self.squeeze else fwd
-
-    def log_jacobian_tensor(self, x):
-        return tf.zeros((1,), np.float64)
-
-    def __str__(self):
-        return "LoTri->vec"
+#
+# class LowerTriangular(Transform):
+#     """
+#     A transform of the form
+#
+#        tri_mat = vec_to_tri(x)
+#
+#     x is a free variable, y is always a list of lower triangular matrices sized
+#     (N x N x D).
+#     """
+#
+#     def __init__(self, N, num_matrices=1, squeeze=False):
+#         """
+#         Create an instance of LowerTriangular transform.
+#         Args:
+#             N the size of the final lower triangular matrices.
+#             num_matrices: Number of matrices to be stored.
+#             squeeze: If num_matrices == 1, drop the redundant axis.
+#         """
+#         # We need to store this for reconstruction.
+#         self.num_matrices = num_matrices
+#         self.squeeze = squeeze
+#         self.N = N
+#
+#     def _validate_vector_length(self, length):
+#         """
+#         Check whether the vector length is consistent with being a triangular
+#          matrix and with `self.num_matrices`.
+#         Args:
+#             length: Length of the free state vector.
+#
+#         Returns: Length of the vector with the lower triangular elements.
+#
+#         """
+#         L = length / self.num_matrices
+#         if int(((L * 8) + 1) ** 0.5) ** 2.0 != (L * 8 + 1):
+#             raise ValueError("The free state must be a triangle number.")
+#         return L
+#
+#     def forward(self, x):
+#         """
+#         Transforms from the free state to the variable.
+#         Args:
+#             x: Free state vector. Must have length of `self.num_matrices` *
+#                 triangular_number.
+#
+#         Returns:
+#             Reconstructed variable.
+#         """
+#         L = self._validate_vector_length(len(x))
+#         matsize = int((L * 8 + 1) ** 0.5 * 0.5 - 0.5)
+#         xr = np.reshape(x, (self.num_matrices, -1))
+#         var = np.zeros((matsize, matsize, self.num_matrices), np.float64)
+#         for i in range(self.num_matrices):
+#             indices = np.tril_indices(matsize, 0)
+#             indices += (np.zeros(len(indices[0])).astype(int) + i,)
+#             var[indices] = xr[i, :]
+#         return var.squeeze() if self.squeeze else var
+#
+#     def backward(self, y):
+#         """
+#         Transforms from the variable to the free state.
+#         Args:
+#             y: Variable representation.
+#
+#         Returns:
+#             Free state.
+#         """
+#         N = int(np.sqrt(y.size / self.num_matrices))
+#         reshaped = np.reshape(y, (N, N, self.num_matrices))
+#         size = len(reshaped)
+#         triangular = reshaped[np.tril_indices(size, 0)].T
+#         return triangular
+#
+#     def forward_tensor(self, x):
+#         reshaped = tf.reshape(x, (self.num_matrices, -1))
+#         fwd = tf.transpose(vec_to_tri(reshaped, self.N), [1, 2, 0])
+#         return tf.squeeze(fwd) if self.squeeze else fwd
+#
+#     def log_jacobian_tensor(self, x):
+#         return tf.zeros((1,), np.float64)
+#
+#     def __str__(self):
+#         return "LoTri->vec"

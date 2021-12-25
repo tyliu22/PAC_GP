@@ -14,7 +14,7 @@ import numpy as np
 
 def generate_sin_data(N=100, x_min=-3, x_max=3,
                       noise_var=0.1**2,
-                      random_order=True, noise_input=None):
+                      random_order=True):
 
     # Noise free target function
     def f_latent(x):

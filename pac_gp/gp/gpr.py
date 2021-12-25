@@ -326,6 +326,8 @@ class NIGPR:
 
         return f_grad_mean, f_grad_mean_tf
 
+
+    # Here the "self" means the
     def _build_predict_f(self, Xnew, full_cov=True, grad_posterior_mean=None):
         """
             # noise_input_variance=None
@@ -343,8 +345,8 @@ class NIGPR:
         K = self.kern.K(self.X) # K_NN
 
         # K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter)
-        K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter) + self.f_grad_mean_tf
-
+        # K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter) + self.f_grad_mean_tf
+        K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter) + grad_posterior_mean
 
         L = tf.cholesky(K)  # L = chol(K_NN + sigma_n * I);
         A = tf.matrix_triangular_solve(L, Kx, lower=True) # inv(L) * k_N(x)
@@ -362,18 +364,18 @@ class NIGPR:
             fvar = tf.tile(tf.reshape(fvar, (-1, 1)), [1, tf.shape(self.Y)[1]])
         return fmean, fvar
 
-    def _build_predict_y(self, Xnew, full_cov=True):
+    def _build_predict_y(self, Xnew, full_cov=True, grad_posterior_mean=None):
         """
         Compute the mean and variance of the observations at some new points
         Xnew.
         """
-        mean, var = self._build_predict_f(Xnew, full_cov)
+        mean, var = self._build_predict_f(Xnew, full_cov, grad_posterior_mean)
 
-        if full_cov is True:
-            noise = self.sn2 * tf.eye(tf.shape(Xnew)[0], dtype=tf.float64)
-            var = var + noise[:, :, None]
-        else:
-            var = var + self.sn2
+        # if full_cov is True:
+        #     noise = self.sn2 * tf.eye(tf.shape(Xnew)[0], dtype=tf.float64)
+        #     var = var + noise[:, :, None]
+        # else:
+        #     var = var + self.sn2
 
         return mean, var
 

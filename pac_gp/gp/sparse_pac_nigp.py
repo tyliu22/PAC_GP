@@ -665,17 +665,6 @@ class NIGP_PAC_FULL_GP_BASE(PAC_GP_BASE):
         # self.Q_mean, self.Q_cov = self.gp._build_predict_f(self.X_tf, full_cov=True)
         self.Q_mean, self.Q_cov = self.gp._build_predict_f(self.X_tf, full_cov=True)
 
-        # First-order approximation of the mean function
-        # for i in range(self.n_classes):
-        #     # calculate the derivative of the mean function with \tlide{x}
-        #     grad_posterior_mean = tf.gradients(means[:, i], data_inputs)[0]
-        #     # new variance
-        #     variances += tf.reduce_sum(grad_posterior_mean**2 * data_input_variances, axis=1, keep_dims=True)\
-        #                  * tf.one_hot(tf.ones([tf.shape(data_inputs)[0]], dtype=tf.int32) * i, self.n_classes)
-            # calculate the derivative of the mean function with \tlide{x}
-        # self.grad_posterior_mean = tf.gradients(self.Q_mean, self.X_tf)[0]
-        # self.Q_mean_noisy, self.Q_cov_noise = self.gp._build_predict_f_noise(self.grad_posterior_mean, self.X_tf, full_cov=True)
-
         self.Q_mean = tf.squeeze(self.Q_mean)           # ONLY VALID FOR output_dim == 1
         self.Q_cov = tf.squeeze(self.Q_cov)             # ONLY VALID FOR output_dim == 1
         self.Q_cov += tf.eye(tf.shape(self.X_tf)[0], dtype=tf.float64) * self.jitter
@@ -770,15 +759,8 @@ class NIGP_PAC_HYP_GP(NIGP_PAC_FULL_GP_BASE):
 
         # If considering the noisy input Gaussian process, add the extra item as the variable
         variables = [self.kernel.lengthscales_unc_tf,
-                     self.kernel.variance_unc_tf,
-                     # noisy input regularization term
-                     # self.noise_x,
-                     self.sn2_unc_tf]
-        # variables = [self.kernel.lengthscales_unc_tf,
-        #              self.kernel.variance_unc_tf,
-        #              # noisy input regularization term
-        #              self.noise_x,
-        #              self.sn2_unc_tf]
+                     self.kernel.variance_unc_tf]
+
         if self.method == 'bkl':
             self.objective = self.upper_bound_bkl
         else:
