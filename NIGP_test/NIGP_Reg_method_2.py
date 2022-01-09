@@ -1,5 +1,8 @@
 
 """
+    NIGP Method 1 :
+        two-step: stardand GP & slope of mean function
+
     Function:
         Other implementation approach of Noisy Input Gaussian Processing (NIGP):
         two steps:
@@ -8,6 +11,8 @@
 
     Setting:
         Noisy input and noisy output
+
+    Figure 2 with 4 subfigure in PAC-NIGP
 """
 
 

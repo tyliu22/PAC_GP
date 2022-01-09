@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-    Created on Wed Nov 30 11:21:25 2016
-    @author: Aleksander
+
+    NIGP Method 1 :
+        Direct calculate the posterior mean and covariance of GP, even the posterior distribution is unknown
 
     Function:
         Implementation approach of Noisy Input Gaussian Processing (NIGP); also the Paper implementation :
             "Gaussian Process Training with Input Noise"
 
-        Direct calculate the posterior mean and covariance of GP, even the posterior distribution is unknown
 
     Parameters:
         var_x: input noise variance

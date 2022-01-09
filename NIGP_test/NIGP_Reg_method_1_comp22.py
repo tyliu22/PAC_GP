@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """
+
     Created on Wed Nov 30 11:21:25 2016
     @author: Aleksander
 
@@ -15,6 +16,7 @@
         varf : kernal hyperparameter sigma_f
         l    : kernal hyperparameter lengthscale   or   parameter set
 
+    Figure 3 with 2 subfigure in PAC-NIGP
 """
 
 import numpy as np

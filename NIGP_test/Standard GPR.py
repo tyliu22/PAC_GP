@@ -1,13 +1,14 @@
 """
-    This code is copy from:
-    https://github.com/krasserm/bayesian-machine-learning/blob/dev/gaussian-processes/gaussian_processes.ipynb
+    Standard GPR algorithm
+
+        This code is copy from:
+        https://github.com/krasserm/bayesian-machine-learning/blob/dev/gaussian-processes/gaussian_processes.ipynb
 
     Function:
         Implementation of standard GP algorithm
 
     Setting:
         Noisy output
-
 """
 
 import numpy as np

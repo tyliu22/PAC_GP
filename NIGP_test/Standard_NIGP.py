@@ -1,6 +1,7 @@
 
 """
-    NIGP for multi-dimensional variable
+    NIGP Method 1 :
+        two-step: stardand GP & slope of mean function
 
     Function:
         Other implementation approach of Noisy Input Gaussian Processing (NIGP):
@@ -10,21 +11,22 @@
 
     Setting:
         Noisy input and noisy output
+
+    Figure 2 with 4 subfigure in PAC-NIGP
 """
 
 
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.linalg import inv
-from numpy.linalg import det
+from numpy.linalg import cholesky, det
+from scipy.linalg import solve_triangular
 from scipy.optimize import minimize
 # import tensorflow as tf
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
 import matplotlib
-
-from NIGP_test.NIGP_reg_standard.kernels import RBF
 
 
 # plot the mean and covariance of GPR with testing data
@@ -93,7 +95,7 @@ def kernel(X1, X2, l=1.0, sigma_f=1.0):
 
 
 # calculate the kernel function TENSOR
-def kernel_Tensor(X1, X2=None, l=1.0, sigma_f=1.0, input_dim=None):
+def kernel_Tensor(X1, X2=None, l=1.0, sigma_f=1.0):
     """
     Isotropic squared exponential kernel.
 
@@ -104,11 +106,6 @@ def kernel_Tensor(X1, X2=None, l=1.0, sigma_f=1.0, input_dim=None):
     Returns:
         (m x n) matrix.
     """
-
-    if input_dim is not None:
-        l = np.ones(input_dim)
-        shape = (input_dim, )
-
 
     # sqdist = X1**2 + X2**2 - 2 * tf.matmul(X1, tf.transpose(X2))
     X1 = X1 / l
@@ -135,6 +132,7 @@ def NIGP_f_grad_mean(X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8):
 
     VAR_X_train = tf.placeholder(tf.float64, shape=X_train.shape)
     VAR_X_test = tf.placeholder(tf.float64, shape=X_train.shape)
+    # VAR_Y_train = tf.placeholder(tf.float64, shape=Y_train.shape)
 
     K_X_star = kernel_Tensor(X1=VAR_X_test, X2=VAR_X_train, l=l, sigma_f=sigma_f)
     K = kernel_Tensor(X1=VAR_X_train, l=l, sigma_f=sigma_f)
@@ -160,7 +158,6 @@ def NIGP_K_grad_mean(X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigma_x
 
     # calculate the mean function of posterior distribution
     f_grad_mean = NIGP_f_grad_mean(X_train, Y_train, l, sigma_f, sigma_y)
-
     K = kernel(X_train, X_train, l, sigma_f) + sigma_y ** 2 * np.eye(len(X_train))
     SIGMA_x = sigma_x**2 * np.eye(len(X_train[1]))
     K_nigp = K + np.diag(np.diag(f_grad_mean.dot(SIGMA_x).dot(f_grad_mean.T)))
@@ -187,7 +184,7 @@ def NIGP_posterior(X_s, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigm
         Posterior mean vector (n x d) and covariance matrix (n x n).
     """
 
-    K_Xtr_Xtr = kernel(X_train, X_train, l=l, sigma_f=sigma_f)
+    # K_Xtr_Xtr = kernel(X_train, X_train, l=l, sigma_f=sigma_f)
     K_Xs_Xs   = kernel(X_s,     X_s,     l=l, sigma_f=sigma_f)
     K_Xs_Xtr  = kernel(X_s,     X_train, l=l, sigma_f=sigma_f)
     K_Xtr_Xs  = kernel(X_train, X_s,     l=l, sigma_f=sigma_f)
@@ -201,6 +198,12 @@ def NIGP_posterior(X_s, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigm
 
     return mu_s_nigp, cov_s_nigp
 
+
+
+def prediction(X_test, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigma_x=1e-8):
+    mu_nigp_pred, cov_nigp_pred = NIGP_posterior(X_test, X_train, Y_train, l=l, sigma_f=sigma_f,
+                                                 sigma_y=sigma_y, sigma_x=sigma_x)
+    return mu_nigp_pred, cov_nigp_pred
 
 
 
@@ -228,7 +231,8 @@ def nll_fn_nigp(X_train, Y_train, noise_y, NIGP_matrix_init_para):
         K = kernel(X_train, X_train, l=theta[0], sigma_f=theta[1]) + \
             noise_y ** 2 * np.eye(len(X_train))
         K_nigp = K + NIGP_matrix_init_para
-
+        # K_nigp = K
+        # K_nigp = NIGP_K_grad_mean(X_train, Y_train, l=theta[0], sigma_f=theta[1], sigma_y=1e-8, sigma_x=1e-8)
         return 0.5 * np.log(det(K_nigp)) + \
                0.5 * Y_train.dot(inv(K_nigp).dot(Y_train)) + \
                0.5 * len(X_train) * np.log(2 * np.pi)
@@ -236,33 +240,23 @@ def nll_fn_nigp(X_train, Y_train, noise_y, NIGP_matrix_init_para):
 
 
 
-def posterior(X_s, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, Non_zero_mu=False):
-    """
-    Computes the suffifient statistics of the posterior distribution
-    from m training data X_train and Y_train and n new inputs X_s.
- -
-    Args:
-        X_s: New input locations (n x d).
-        X_train: Training locations (m x d).
-        Y_train: Training targets (m x 1).
-        l: Kernel length parameter.
-        sigma_f: Kernel vertical variation parameter.
-        sigma_y: Noise parameter.
+# ***************************  Standard GP function -- f -- ******************************* #
 
-    Returns:
-        Posterior mean vector (n x d) and covariance matrix (n x n).
+# calculate the posterior of NIGP
+def f_nigp_posterior(X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8, sigma_x=1.0):
+    """
+        posterior mean function of NIGPR, including a regularization item
     """
 
-    K = kernel(X_train, X_train, l, sigma_f) + sigma_y ** 2 * np.eye(len(X_train))
-    K_s = kernel(X_train, X_s, l, sigma_f)
-    K_ss = kernel(X_s, X_s, l, sigma_f) + 1e-8 * np.eye(len(X_s))
-    K_inv = inv(K)
+    f_grad_mean = NIGP_f_grad_mean(X_train, Y_train, l, sigma_f, sigma_y)
 
-    if Non_zero_mu==True:
-        mu_s = X_s + K_s.T.dot(K_inv).dot(Y_train - X_train)
-    else:
-        mu_s = K_s.T.dot(K_inv).dot(Y_train)
-    cov_s = K_ss - K_s.T.dot(K_inv).dot(K_s)
+    K = kernel(X_train, X_train, l, sigma_f)
+
+    K_NIGP = NIGP_K_grad_mean(X_train, Y_train, l=l, sigma_f=sigma_f, sigma_y=sigma_y, sigma_x=sigma_x)
+    K_inv = inv(K_NIGP)
+
+    mu_s = K.T.dot(K_inv).dot(Y_train)
+    cov_s = K - K.T.dot(K_inv).dot(K)
 
     return mu_s, cov_s
 
@@ -276,46 +270,39 @@ if __name__ == "__main__":
 
     np.random.seed(9527)
     # Fig_path = '/Users/tianyuliu/PycharmProjects/PAC_GP/Results_fig/'
+    Fig_path = None
 
     # ****************************************** #
     # Data preparing                             #
     # ****************************************** #
     X_test = np.linspace(-10, 10, 100).reshape(-1, 1)
-    Y_test = np.sin(X_test)
-
+    Y_test = 2.0 * np.sin(X_test)
 
     # std: covariance of noisy_X and noisy_y
-    noise_y = 0.1  # Output noisy std
+    noise_y = 0.4  # Output noisy std
     noise_x = 0.4  # Iutput noisy std
 
     # New noisy training data
+    # X_train = np.random.random((150, 1)) * 20.0 - 10.0 # generate 150 data points from interval [-10, 10]
     X_train = np.linspace(-10, 10, 150).reshape(-1, 1)
-    Y_train = np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
+    Y_train = 2.0 * np.sin(X_train) + noise_y * np.random.randn(*X_train.shape)
     X_train_obs = X_train + noise_x * np.random.randn(*X_train.shape)
     X_train = X_train_obs
 
     # ---- intialization parameter ---- #
     l       = 1.0
     sigma_f = 1.0
-    sigma_x = noise_x
-    sigma_y = noise_y
+    sigma_x = noise_x # std, variance= sigma_x**2
+    sigma_y = noise_y # std, variance= sigma_y**2
 
-    # ***************************** GPR with fitted paras **************************** #
 
-    # GPR or NIGPR posterior
-    # mu_post_GPR_init, cov_post_GPR_init = posterior(X_test, X_train, Y_train, sigma_y=sigma_y)
-    # plot_gp(mu_post_GPR_init, cov_post_GPR_init, X_test, X_train=X_train, Y_train=Y_train,
-    #         titles='Reproduction_GPR_post_init_paras', Fig_path=Fig_path)
-
-    mu_s_nigp_init, cov_s_nigp_init = NIGP_posterior(X_test, X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
-    plot_gp(mu_s_nigp_init, cov_s_nigp_init, X_test, X_train=X_train, Y_train=Y_train,
-            titles='Reproduction_NIGPR_post_init_paras')
-    # , Fig_path = Fig_path
-
-    # Performance analysis
-    # MSE_GPR_init   = 0.5 * np.sum((mu_post_GPR_init - Y_test)**2)
-    MSE_NIGPR_init = 0.5 * np.sum((mu_s_nigp_init   - Y_test)**2)
-    # print('Init para MSE error:  GPR ', MSE_GPR_init, 'NIGPR  ', MSE_NIGPR_init)
+    # mu_s_nigp_init, cov_s_nigp_init = NIGP_posterior(X_test, X_train, Y_train, sigma_y=noise_y, sigma_x=noise_x)
+    # plot_gp(mu_s_nigp_init, cov_s_nigp_init, X_test, X_train=X_train, Y_train=Y_train,
+    #         titles='Reproduction_NIGPR_post_init_paras', Fig_path=Fig_path)
+    #
+    # # Performance analysis
+    # MSE_NIGPR_init = 0.5 * np.sum((mu_s_nigp_init - Y_test)**2)
+    # print('init NIGPR:  ', MSE_NIGPR_init)
 
     f_grad_mean = NIGP_f_grad_mean(X_train, Y_train, l, sigma_f, sigma_y)
     SIGMA_x = sigma_x ** 2 * np.eye(len(X_train[1]))
@@ -324,15 +311,6 @@ if __name__ == "__main__":
     # ****************************************** #
     # Parameters optimization                    #
     # ****************************************** #
-
-    # Optimize the nll loss (used in GPR), without regularization item, slope of mean func
-    # res = minimize(nll_fn(X_train, Y_train, noise_y), [1, 1],
-    #                bounds=((1e-5, None), (1e-5, None)),
-    #                method='L-BFGS-B',
-    #                tol=1e-12,
-    #                options={'disp': False, 'eps': 0.001}
-    #                )
-    # l_opt, sigma_f_opt = res.x
 
     # Optimize the NIGP nll loss (used in NIGPR), with regularization item, slope of mean func
     res = minimize(nll_fn_nigp(X_train, Y_train, noise_y, NIGP_matrix_init_para), [1, 1],
@@ -346,19 +324,14 @@ if __name__ == "__main__":
     # ****************************************** #
     # Posterior distribution                     #
     # ****************************************** #
-    # mu_post_GPR_fit, cov_post_GPR_fit = posterior(X_test, X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt, sigma_y=sigma_y)
-    # plot_gp(mu_post_GPR_fit, cov_post_GPR_fit, X_test, X_train=X_train, Y_train=Y_train,
-    #         titles='Reproduction_GPR_post_fit_paras', Fig_path=Fig_path)
-
-    mu_s_nigp_fit, cov_s_nigp_fit = NIGP_posterior(X_test, X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt, sigma_y=noise_y, sigma_x=noise_x)
+    mu_s_nigp_fit, cov_s_nigp_fit = NIGP_posterior(X_test, X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt,
+                                                   sigma_y=noise_y, sigma_x=noise_x)
     plot_gp(mu_s_nigp_fit, cov_s_nigp_fit, X_test, X_train=X_train, Y_train=Y_train,
-            titles='Reproduction_NIGPR_post_fit_paras')
-    # , Fig_path = Fig_path
+            titles='Reproduction_NIGPR_post_fit_paras', Fig_path=Fig_path)
 
     # Performance analysis
-    # MSE_GPR_fit   = 0.5 * np.sum((mu_post_GPR_fit - Y_test)**2)
     MSE_NIGPR_fit = 0.5 * np.sum((mu_s_nigp_fit   - Y_test)**2)
-    # print('Fitted para MSE error:  GPR ', MSE_GPR_fit, 'NIGPR  ', MSE_NIGPR_fit)
+    print('NIGPR  ', MSE_NIGPR_fit)
 
 
     print('End')

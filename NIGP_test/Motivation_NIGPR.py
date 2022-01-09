@@ -8,6 +8,8 @@
     Setting:
         Noisy input with OR without?
         Running very slowly
+
+    Figure 1 in PAC-NIGP introduction section
 """
 
 import numpy as np
