@@ -176,28 +176,6 @@ mu_s, cov_s = posterior(X, X_train, Y_train, sigma_y=noise)
 samples = np.random.multivariate_normal(mu_s.ravel(), cov_s, 3)
 plot_gp(mu_s, cov_s, X, X_train=X_train, Y_train=Y_train, samples=samples)
 
-#
-# params = [
-#     (0.3, 1.0, 0.2),
-#     (3.0, 1.0, 0.2),
-#     (1.0, 0.3, 0.2),
-#     (1.0, 3.0, 0.2),
-#     (1.0, 1.0, 0.05),
-#     (1.0, 1.0, 1.5),
-# ]
-#
-# plt.figure(figsize=(12, 5))
-#
-# for i, (l, sigma_f, sigma_y) in enumerate(params):
-#     mu_s, cov_s = posterior(X, X_train, Y_train, l=l,
-#                             sigma_f=sigma_f,
-#                             sigma_y=sigma_y)
-#     plt.subplot(3, 2, i + 1)
-#     plt.subplots_adjust(top=2)
-#     plt.title(f'l = {l}, sigma_f = {sigma_f}, sigma_y = {sigma_y}')
-#     plot_gp(mu_s, cov_s, X, X_train=X_train, Y_train=Y_train)
-#
-
 
 
 # Minimize the negative log-likelihood w.r.t. parameters l and sigma_f.
@@ -215,48 +193,6 @@ l_opt, sigma_f_opt = res.x
 # Compute posterior mean and covariance with optimized kernel parameters and plot the results
 mu_s, cov_s = posterior(X, X_train, Y_train, l=l_opt, sigma_f=sigma_f_opt, sigma_y=noise)
 plot_gp(mu_s, cov_s, X, X_train=X_train, Y_train=Y_train)
-
-
-
-
-# *************************** Higher dimensions ******************88 #
-"""
-    Higher dimensions:
-        The above implementation can also be used for higher input data dimensions. Here, a GP is used to fit noisy
-        samples from a sine wave originating at  0  and expanding in the x-y plane.
-"""
-# def plot_gp_2D(gx, gy, mu, X_train, Y_train, title, i):
-#     ax = plt.gcf().add_subplot(1, 2, i, projection='3d')
-#     ax.plot_surface(gx, gy, mu.reshape(gx.shape), cmap=cm.coolwarm, linewidth=0, alpha=0.2, antialiased=False)
-#     ax.scatter(X_train[:,0], X_train[:,1], Y_train, c=Y_train, cmap=cm.coolwarm)
-#     ax.set_title(title)
-#     plt.show()
-#
-#
-# noise_2D = 0.1
-#
-# rx, ry = np.arange(-5, 5, 0.3), np.arange(-5, 5, 0.3)
-# gx, gy = np.meshgrid(rx, rx)
-#
-# X_2D = np.c_[gx.ravel(), gy.ravel()]
-#
-# X_2D_train = np.random.uniform(-4, 4, (100, 2))
-# Y_2D_train = np.sin(0.5 * np.linalg.norm(X_2D_train, axis=1)) + \
-#              noise_2D * np.random.randn(len(X_2D_train))
-#
-# plt.figure(figsize=(14,7))
-#
-# mu_s, _ = posterior(X_2D, X_2D_train, Y_2D_train, sigma_y=noise_2D)
-# plot_gp_2D(gx, gy, mu_s, X_2D_train, Y_2D_train,
-#            f'Before parameter optimization: l={1.00} sigma_f={1.00}', 1)
-#
-# res = minimize(nll_fn(X_2D_train, Y_2D_train, noise_2D), [1, 1],
-#                bounds=((1e-5, None), (1e-5, None)),
-#                method='L-BFGS-B')
-#
-# mu_s, _ = posterior(X_2D, X_2D_train, Y_2D_train, *res.x, sigma_y=noise_2D)
-# plot_gp_2D(gx, gy, mu_s, X_2D_train, Y_2D_train,
-#            f'After parameter optimization: l={res.x[0]:.2f} sigma_f={res.x[1]:.2f}', 2)
 
 
 

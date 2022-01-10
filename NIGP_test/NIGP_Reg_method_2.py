@@ -34,7 +34,7 @@ def plot_gp(mu, cov, X, X_train=None, Y_train=None, titles='GPR plot', Fig_path=
     # X: test data:  X_train and y_train: training data and labels
 
     plt.figure(figsize=(6, 4))
-    plt.style.use('bmh')
+    # plt.style.use('bmh')
     fontsize = 11
     fontfamily = 'Times New Roman'
     matplotlib.rcParams['font.size'] = fontsize
@@ -43,16 +43,22 @@ def plot_gp(mu, cov, X, X_train=None, Y_train=None, titles='GPR plot', Fig_path=
     X = X.ravel()
     mu = mu.ravel()
     uncertainty = 1.96 * np.sqrt(np.diag(cov))
-    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.3)
-    plt.plot(X, mu, label='Estimation')
+    plt.fill_between(X, mu + uncertainty, mu - uncertainty, color='C2', alpha=0.3)
+    plt.plot(X, mu, color='C2', label='Estimation')
     if X_train is not None:
-        plt.plot(X_train, Y_train, 'rx', label='Real data')
+        plt.plot(X_train, Y_train, '+', label='Real data')
 
+    plt.grid()
     plt.legend(loc='best')
     plt.xlabel('Test input')
     plt.ylabel('Output')
+    plt.ylim([-2, 2])
+    plt.xlim([-2, 2])
     if Fig_path is not None:
         plt.savefig(fname=Fig_path+titles+'.pdf', format="pdf")
+    else:
+        plt.savefig(fname= titles + '.pdf', format="pdf")
+
     plt.show()
 
     # X = X.ravel()

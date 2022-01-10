@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 
-    Created on Wed Nov 30 11:21:25 2016
-    @author: Aleksander
-
     Function:
         Implementation approach of Noisy Input Gaussian Processing (NIGP); also the Paper implementation :
             "Gaussian Process Training with Input Noise"
