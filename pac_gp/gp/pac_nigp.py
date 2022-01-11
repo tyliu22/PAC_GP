@@ -29,7 +29,7 @@ from tensorflow.python.ops.distributions.kullback_leibler import kl_divergence a
 # from tensorflow_probability.distributions import kl_divergence as KL
 
 from gp.gpr import GPR
-from gp.gpr import NIGPR
+from gp.nigpr import NIGPR
 from gp.kerns import RBF
 from gp.mean_functions import Zero
 
