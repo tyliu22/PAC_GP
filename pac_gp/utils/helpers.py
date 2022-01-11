@@ -182,7 +182,7 @@ def init_inducing_points(X, m):
     return Z_init
 
 
-def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0.01, epsilon=0.2,
+def build_model(model_name, X_noise_train, Y, ARD=False, delta=0.01, epsilon=0.2,
                 nInd=None, suffix='', loss='01_loss', noise_input_variance=None):
     """
     setting up model
@@ -276,7 +276,7 @@ def build_model(model_name, X_noise_train, Y, X_origin_train, ARD=False, delta=0
     return model
 
 
-def compare(X_noise, Y, X_original, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
+def compare(X, Y, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
             epsilon=0.2, nInd=None, suffix='', loss='01_loss', noise_input_variance=None):
         """
         running and evaluating model

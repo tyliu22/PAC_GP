@@ -85,7 +85,7 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
                 #                          test_size=test_size, ARD=ARD,
                 #                          epsilon=epsilon, loss=loss)
                 print('Full GP Algorithm: GPflow Full GP')
-                RV_gpflow = helpers.compare(X_noise, Y, X_original, 'GPflow Full GP', seed=i,
+                RV_gpflow = helpers.compare(X, Y, X, 'GPflow Full GP', seed=i,
                                             test_size=test_size, ARD=ARD,
                                             epsilon=epsilon, loss=loss)
                 # RVs = [RV_pac, RV_naive, RV_gpflow]

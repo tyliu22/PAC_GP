@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--n_reps', help='number of repetitions',
                         default=1)
     parser.add_argument('-m', '--nInd', help='number of inducing points',
-                        default=0)
+                        default=100)
     parser.add_argument('-l', '--loss', help='loss function',
                         default='01_loss')
 
