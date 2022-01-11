@@ -2,52 +2,38 @@
 """
 Copyright (c) 2018 Robert Bosch GmbH
 All rights reserved.
-
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
-
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
-"""
-"""
-    NIGP: noisy input Gaussian process case
-    func: _generate_optimization_ops() : add extra parameter sigma_x as variable 
-    func: _get_optimization_x0() : Initialization extra parameters at here
-
-    Learned self.GP function f should be changed, then posterior distribution should be changed
-    KL divergence
 """
 
 import numpy as np
 import tensorflow as tf
-# import tensorflow_probability as tfp
 
 from scipy.optimize import minimize
 
-from tensorflow.contrib.distributions.python.ops.mvn_full_covariance import MultivariateNormalFullCovariance as MVN
-from tensorflow.python.ops.distributions.kullback_leibler import kl_divergence as KL
-# from tensorflow_probability.distributions import MultivariateNormalFullCovariance as MVN
-# from tensorflow_probability.distributions import kl_divergence as KL
+from tensorflow.contrib.distributions import MultivariateNormalFullCovariance as MVN
+from tensorflow.contrib.distributions import kl_divergence as KL
 
-from gp.gpr import GPRFITC
-from gp.gpr import GPR
-# from gp.nigpr import NIGPR
-from gp.kerns import RBF
-from gp.mean_functions import Zero
+from pac_gp.gp.gpr import GPRFITC
+from pac_gp.gp.gpr import GPR
+from pac_gp.gp.kerns import RBF
+from pac_gp.gp.mean_functions import Zero
 
-from utils.bin_kl import BinaryKLInv
-from utils.utils_gp import expand_vector
-from utils.utils_gp import flatten
-from utils.utils_gp import Configurable
-from utils.utils_gp import variable_summaries
-from utils.utils_gp import clamp_and_round
-from utils.transformations import Log1pe
+from pac_gp.utils.bin_kl import BinaryKLInv
+from pac_gp.utils.utils import expand_vector
+from pac_gp.utils.utils import flatten
+from pac_gp.utils.utils import Configurable
+from pac_gp.utils.utils import variable_summaries
+from pac_gp.utils.utils import clamp_and_round
+from pac_gp.utils.transformations import Log1pe
 
 
 class PAC_GP_BASE(Configurable):
 
     def __init__(self, X, Y, sn2, kernel=None, mean_function=None,
                  epsilon=0.2, delta=0.01, verbosity=0, method='bkl',
-                 loss='01_loss', noise_input_variance=None):
+                 loss='01_loss'):
 
         assert X.ndim == 2
         assert Y.ndim == 2
@@ -65,9 +51,7 @@ class PAC_GP_BASE(Configurable):
         self.epsilon = epsilon
         self.delta = delta
 
-        # output noise, to be estimated or constant?
         self.sn2 = sn2
-        self.noise_input_variance = noise_input_variance
 
         self.jitter = np.asarray(1e-6, dtype=np.float64)
 
@@ -92,7 +76,6 @@ class PAC_GP_BASE(Configurable):
         self.verbosity = verbosity
         self.ninits = 0
 
-        # transformation: softplus and its inverse softplus
         self.pos_trans = Log1pe()
 
         if self.verbosity > 3:
@@ -103,19 +86,15 @@ class PAC_GP_BASE(Configurable):
             # Tensorboard file writer for training and test (e.g. train_path = 'train/')
             self.summary_calls = 0
         self.debug_variables = 0
-        # Call this functions -> CALL func: _generate_{data, gp, prediction, pac, optimization}_ops()
         self._generate_ops()
 
     def predict(self, Xnew, full_cov=False):
         """ GP prediction at given input points
-
         p(y* | x*, X, y) \sim \mathcal{N}(y* | mean, var)
-
         Args:
             Xnew: ndarray (num_points, input_dim), input points matrix
             full_cov: bool, flat whether to return full covariance or only
                       diagonal
-
         Returns:
             mean: ndarray (num_points, output_dim), mean of GP prediction
             var: ndarray (num_points, num_points, output_dim) for full
@@ -134,14 +113,11 @@ class PAC_GP_BASE(Configurable):
 
     def predict_noiseless(self, Xnew, full_cov=False):
         """ GP prediction of the latent function at given input points
-
         p(f* | x*, X, y) \sim \mathcal{N}(f* | mean, var)
-
         Args:
             Xnew: ndarray (num_points, input_dim), input points matrix
             full_cov: bool, flat whether to return full covariance or only
                       diagonal
-
         Returns:
             mean: ndarray (num_points, output_dim), mean of GP prediction
             var: ndarray (num_points, num_points, output_dim) for full
@@ -205,8 +181,8 @@ class PAC_GP_BASE(Configurable):
             return sess.run(self.penalty_bkl, feed_dict=feed)
 
     def optimize(self):
-        x0 = self._get_optimization_x0() # class PAC_HYP_GP; PAC_INDUCING_GP; PAC_INDUCING_HYP_GP
-        bounds = self._get_bounds() # for optimize(): bound of varias; class PAC_HYP_GP; PAC_INDUCING_HYP_GP; applied in PAC_GP_BASE
+        x0 = self._get_optimization_x0()
+        bounds = self._get_bounds()
 
         if self.verbosity > 0:
             self.ninits += 1
@@ -216,14 +192,14 @@ class PAC_GP_BASE(Configurable):
         with tf.Session() as sess:
             def objective_fcn(x):
                 feed = self._get_optimization_feed(x)
-                J = sess.run([self.objective], feed_dict=feed) # calculate self.upper_bound
+                J = sess.run([self.objective], feed_dict=feed)
                 if (self.verbosity > 0) and (self.debug_variables > 0):
                     stats = sess.run([self._debug_op], feed_dict=feed)[0]
                     self.writer_tf.add_summary(stats, self.summary_calls+1)
                     self.summary_calls += 1
                 return J
 
-            def objective_grad_fcn(x): # calculate the gradient: objective (upper bound) -> variables
+            def objective_grad_fcn(x):
                 feed = self._get_optimization_feed(x)
                 return flatten(sess.run(self.objective_grad, feed_dict=feed))
 
@@ -260,9 +236,7 @@ class PAC_GP_BASE(Configurable):
 
     def configure(self, config):
         """ Configure class instance based on keyword/values in config dict
-
         The computation graph is rebuild once a new configure is called.
-
         Args:
             config: dict, values to be written in member attributes of given key/name
         """
@@ -306,7 +280,7 @@ class PAC_GP_BASE(Configurable):
                                       shape=(None, self.input_dim),
                                       name='Xnew')
 
-        # GP hyperparameter: sn2 and sn2_tf, sn2_unc_tf
+        # GP hyperparameter
         self.sn2_unc_tf = tf.placeholder(dtype=tf.float64,
                                          shape=(1, ),
                                          name='sn2_unconstrained')
@@ -319,10 +293,10 @@ class PAC_GP_BASE(Configurable):
         self.num_hyps_tf = tf.placeholder(dtype=tf.int32, shape=(), name='num_hyps')
 
         # Add summary ops for all relevant variables for tensorboard visualization
-        if self.verbosity > 0:
+        if self.verbosity >0:
             #variable_summaries(tf.squeeze(self.sn2_unc_tf), name='noise_variance', vector=False)
-            self.debug_variables = 0
-            self._debug_op = tf.summary.merge_all(key="stats_summaries") # save variable into tensorboard for debug
+            self.debug_variables=0
+            self._debug_op = tf.summary.merge_all(key="stats_summaries")
 
         # variable_summaries(self.kernel.variance, 'kernel variance', vector=False)
 
@@ -330,7 +304,6 @@ class PAC_GP_BASE(Configurable):
         """ GP predictive distributions for new inputs Xnew_tf
             f = noisefree
             y = noisy
-
             cov = full covariance matrix
             var = only diagonal entries
         """
@@ -373,7 +346,7 @@ class PAC_GP_BASE(Configurable):
             self.empirical_risk = 1 - tf.reduce_mean(inv_gauss)
 
         # Regularization term
-        N = tf.cast(tf.shape(self.X_tf)[0], tf.float64) # cast Tensor to a new type
+        N = tf.cast(tf.shape(self.X_tf)[0], tf.float64)
 
         self.log_Theta = tf.cast(self.num_hyps_tf,dtype=tf.float64) * \
                          tf.log(1. + (self.max_log_tf - self.min_log_tf) *
@@ -383,8 +356,8 @@ class PAC_GP_BASE(Configurable):
         self.penalty_2 = self.log_Theta
         self.penalty_3 = tf.log((2 * tf.sqrt(N)) / self.delta_tf)
 
-        self.penalty = tf.sqrt((self.penalty_1 + self.penalty_2 + self.penalty_3) / (2*N)) # squared PAC Bayes bound
-        self.penalty_bkl = (self.penalty_1 + self.penalty_2 + self.penalty_3) / N #
+        self.penalty = tf.sqrt((self.penalty_1 + self.penalty_2 + self.penalty_3) / (2*N))
+        self.penalty_bkl = (self.penalty_1 + self.penalty_2 + self.penalty_3) / N
 
         # Resulting risk upper bound
         self.upper_bound = self.empirical_risk + self.penalty
@@ -435,13 +408,14 @@ class PAC_GP_BASE(Configurable):
                                                    self.min_log, self.max_log,
                                                    self.rounding_digits)
 
+
 class PAC_FULL_GP_BASE(PAC_GP_BASE):
 
     def __init__(self, *args, **kwargs):
         super(PAC_FULL_GP_BASE, self).__init__(*args, **kwargs)
 
     def _generate_gp_ops(self):
-        # Set up GP model, and calculate the prior and posterior distribution
+        # Set up GP model
         self.gp = GPR(self.X_tf, self.Y_tf, self.sn2_tf,
                       self.kernel, self.mean_function)
 
@@ -451,7 +425,7 @@ class PAC_FULL_GP_BASE(PAC_GP_BASE):
         self.P_cov = self.kernel.K(self.X_tf)          # (num_data, num_data)
         self.P_cov += tf.eye(tf.shape(self.X_tf)[0], dtype=tf.float64) * self.jitter
 
-        # Q: GP posterior._generate_prediction_ops
+        # Q: GP posterior
         self.Q_mean, self.Q_cov = self.gp._build_predict_f(self.X_tf, full_cov=True)
         self.Q_mean = tf.squeeze(self.Q_mean)           # ONLY VALID FOR output_dim == 1
         self.Q_cov = tf.squeeze(self.Q_cov)             # ONLY VALID FOR output_dim == 1
@@ -538,7 +512,6 @@ class PAC_HYP_GP(PAC_FULL_GP_BASE):
         return variables
 
     def _get_bounds(self):
-        # for optimize() "L-BFGS-B": bounds for variables
         x_min = self.pos_trans.backward(np.exp(self.min_log))
         x_max = self.pos_trans.backward(np.exp(self.max_log))
 
@@ -584,8 +557,6 @@ class PAC_HYP_GP(PAC_FULL_GP_BASE):
         # variables = [self.kernel.lengthscales_tf,
         #              self.kernel.variance_tf,
         #              self.sn2_tf]
-
-        # If considering the noisy input Gaussian process, add the extra item as the variable
         variables = [self.kernel.lengthscales_unc_tf,
                      self.kernel.variance_unc_tf,
                      self.sn2_unc_tf]
@@ -596,10 +567,8 @@ class PAC_HYP_GP(PAC_FULL_GP_BASE):
         self.objective_grad = tf.gradients(self.objective, variables)
 
 
-
 class PAC_INDUCING_GP(PAC_SPARSE_GP_BASE):
     """ FITC sparse GP optimizing inducing inputs
-        without hyperparamenters (comapred with PAC_INDUCING_HYP_GP)
     """
 
     def __init__(self, *args, **kwargs):
@@ -670,7 +639,6 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
         return shapes
 
     def _get_bounds(self):
-        # ????
         x_min = self.pos_trans.backward(np.exp(self.min_log))
         x_max = self.pos_trans.backward(np.exp(self.max_log))
 
@@ -684,7 +652,6 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
         # Reshape inducing inputs Z (num_inducing, input_dim)
         # and kernel hyperparameters (input_dim + 2)
         # into 1D optimization vector x
-        # *******  hyperparameter: noisy input regularization  *******
         variables = [self.Z,
                      self.pos_trans.backward(self.kernel.lengthscale),
                      self.pos_trans.backward(self.kernel.variance),
@@ -745,8 +712,3 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
             self.debug_variables += 1
             # Common op to run all variable summaries
             self._debug_op = tf.summary.merge_all(key="stats_summaries")
-
-
-
-
-
