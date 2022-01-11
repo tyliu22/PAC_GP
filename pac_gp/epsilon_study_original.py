@@ -1,10 +1,9 @@
+
 """
 Copyright (c) 2018 Robert Bosch GmbH
 All rights reserved.
-
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
-
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 import sys
@@ -16,7 +15,6 @@ import pandas as pd
 import os
 import argparse
 from sklearn import preprocessing
-# import tensorflow as tf
 
 import utils.plotting as plotting
 import utils.load_dataset as load_dataset
@@ -27,7 +25,6 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
         ARD=False, nInd=0, loss='01_loss'):
     """
     running methods
-
     input:
     dataset_name    :   name of dataset to load
     fn_out          :   name of results file
@@ -52,19 +49,9 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
     Y = preprocessing.scale(Y)
     F = X.shape[1]
 
-    # noise_var_train = np.zeros((F, 1)) + 1
-    # np.random.normal(0.0, noise_var_train, 500)
-    # noise_x_variance = 0.5
-    # noise_x = np.random.normal(0.0, noise_x_variance, size=X.shape)
-    # noise_x_covariance = np.eye(F) * noise_x_variance
-    #
-    # X_original = X
-    # X_noise = X + noise_x
-
     data = []
     for i in range(n_repetitions):
         # vary epsilon
-        print(i)
         for ie, epsilon in enumerate(epsilon_range):
 
             if nInd == 0:
@@ -80,33 +67,27 @@ def run(dataset_name, fn_out, epsilon_range, test_size=0.1, n_repetitions=10,
                                            epsilon=epsilon, loss=loss)
                 RVs = [RV_pac, RV_naive, RV_gpflow]
 
-
             else:
                 # sparse GP
-                print('Start running sparse GP')
-                print('Sparse GP Algorithm: sqrt-PAC Inducing Hyp GP')
-                RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP',
-                                          seed=i, test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon, loss=loss)
-                print('Sparse GP Algorithm: GPflow VFE')
                 RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
                                          test_size=test_size, ARD=ARD,
                                          nInd=nInd, epsilon=epsilon, loss=loss)
-                print('Sparse GP Algorithm: GPflow FITC')
                 RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
                                           test_size=test_size, ARD=ARD,
-                                          nInd=nInd, epsilon=epsilon,loss=loss)
-                print('Sparse GP Algorithm: bkl-PAC Inducing Hyp GP')
+                                          nInd=nInd, epsilon=epsilon,
+                                          loss=loss)
                 RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP',
                                          seed=i, test_size=test_size, ARD=ARD,
                                          nInd=nInd, epsilon=epsilon, loss=loss)
+                RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP',
+                                          seed=i, test_size=test_size, ARD=ARD,
+                                          nInd=nInd, epsilon=epsilon,
+                                          loss=loss)
                 RVs = [RV_vfe, RV_fitc, RV_pac, RV_pac2]
-                print('End sparse GP')
 
             for RV in RVs:
                 data += RV
 
-    print('Store data into DataFrame df')
     df = pd.DataFrame(data)
     df.to_pickle(fn_out)
 
@@ -118,13 +99,13 @@ if __name__ == '__main__':
                         default=False)
     parser.add_argument('-d', '--dataset', default='boston')
     parser.add_argument('-a', '--ARD', help='use ARD', action='store_true',
-                        default=True)
+                        default=False)
     parser.add_argument('-t', '--test_size', help='testsize in [0.0, 1.0]',
                         default=0.2)
     parser.add_argument('-n', '--n_reps', help='number of repetitions',
-                        default=1)
+                        default=10)
     parser.add_argument('-m', '--nInd', help='number of inducing points',
-                        default=100)
+                        default=0)
     parser.add_argument('-l', '--loss', help='loss function',
                         default='01_loss')
 
@@ -135,7 +116,6 @@ if __name__ == '__main__':
 
     dir_results = 'epsilon'
     if args.nInd == 0:
-        print("full GP version")
         models = ['bkl-PAC HYP GP', 'sqrt-PAC HYP GP', 'GPflow Full GP']
         fn_args = (args.dataset, args.loss, args.ARD, 100.*args.test_size,
                    args.n_reps)
@@ -145,7 +125,6 @@ if __name__ == '__main__':
         fn_png = os.path.join(dir_results, '%s.png' % fn_base)
         fn_pdf = os.path.join(dir_results, '%s.pdf' % fn_base)
     else:
-        print("sparse GP version")
         models = ['bkl-PAC Inducing Hyp GP', 'sqrt-PAC Inducing Hyp GP',
                   'GPflow VFE', 'GPflow FITC']
         fn_args = (args.dataset, args.loss, args.nInd, args.ARD,
@@ -166,13 +145,11 @@ if __name__ == '__main__':
             test_size=float(args.test_size), ARD=args.ARD,
             n_repetitions=args.n_reps, nInd=args.nInd, loss=args.loss)
 
-    args.plot = "True"
     if args.plot:
         matplotlib.rc('font', **{'size': 14})
         D = pd.read_pickle(fn_results)
         plotting.plot(D, models, x="epsilon", xticks=[0.2, 0.4, 0.6, 0.8, 1.0],
                       ylim=(0, 0.85))
-        plt.show()
-        # plt.savefig(fn_png)
-        # plt.savefig(fn_pdf)
-        # plt.close()
+        plt.savefig(fn_png)
+        plt.savefig(fn_pdf)
+        plt.close()

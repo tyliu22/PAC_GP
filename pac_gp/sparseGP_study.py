@@ -103,7 +103,7 @@ if __name__ == '__main__':
                         default=0.2)
     parser.add_argument('-e', '--epsilon', help='set epsilon', default=0.6)
     parser.add_argument('-n', '--n_reps', help='number of repetitions',
-                        default=10)
+                        default=1)
     parser.add_argument('-s', '--size', help='number of inducing variables',
                         default='S')
     parser.add_argument('-l', '--loss', help='loss function',
