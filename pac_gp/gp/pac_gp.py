@@ -747,7 +747,6 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
             self._debug_op = tf.summary.merge_all(key="stats_summaries")
 
 
-
 class NIGP_PAC_FULL_GP_BASE(PAC_GP_BASE):
 
     def __init__(self, *args, **kwargs):
