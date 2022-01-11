@@ -2,8 +2,10 @@
 """
 Copyright (c) 2018 Robert Bosch GmbH
 All rights reserved.
+
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
+
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 
@@ -12,12 +14,19 @@ import tensorflow as tf
 from pac_gp.gp.mean_functions import Zero
 from pac_gp.gp.conditionals import feature_conditional
 
-
+"""
+The following snippets are derived from GPFlow V 1.0
+  (https://github.com/GPflow/GPflow)
+Copyright 2017 st--, Mark van der Wilk, licensed under the Apache
+License, Version 2.0, cf. 3rd-party-licenses.txt file in the root directory
+of this source tree.
+"""
 
 
 class GPR:
     """
     Gaussian Process Regression.
+
     Implementation of full GP regression following GPflow implementation
     """
     def __init__(self, X, Y, sn2, kern, mean_function=None):

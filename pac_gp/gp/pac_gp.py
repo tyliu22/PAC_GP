@@ -2,8 +2,10 @@
 """
 Copyright (c) 2018 Robert Bosch GmbH
 All rights reserved.
+
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
+
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 
@@ -90,11 +92,14 @@ class PAC_GP_BASE(Configurable):
 
     def predict(self, Xnew, full_cov=False):
         """ GP prediction at given input points
+
         p(y* | x*, X, y) \sim \mathcal{N}(y* | mean, var)
+
         Args:
             Xnew: ndarray (num_points, input_dim), input points matrix
             full_cov: bool, flat whether to return full covariance or only
                       diagonal
+
         Returns:
             mean: ndarray (num_points, output_dim), mean of GP prediction
             var: ndarray (num_points, num_points, output_dim) for full
@@ -113,11 +118,14 @@ class PAC_GP_BASE(Configurable):
 
     def predict_noiseless(self, Xnew, full_cov=False):
         """ GP prediction of the latent function at given input points
+
         p(f* | x*, X, y) \sim \mathcal{N}(f* | mean, var)
+
         Args:
             Xnew: ndarray (num_points, input_dim), input points matrix
             full_cov: bool, flat whether to return full covariance or only
                       diagonal
+
         Returns:
             mean: ndarray (num_points, output_dim), mean of GP prediction
             var: ndarray (num_points, num_points, output_dim) for full
@@ -236,7 +244,9 @@ class PAC_GP_BASE(Configurable):
 
     def configure(self, config):
         """ Configure class instance based on keyword/values in config dict
+
         The computation graph is rebuild once a new configure is called.
+
         Args:
             config: dict, values to be written in member attributes of given key/name
         """
@@ -304,6 +314,7 @@ class PAC_GP_BASE(Configurable):
         """ GP predictive distributions for new inputs Xnew_tf
             f = noisefree
             y = noisy
+
             cov = full covariance matrix
             var = only diagonal entries
         """
