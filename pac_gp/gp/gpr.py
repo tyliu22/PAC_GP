@@ -9,7 +9,10 @@ LICENSE file in the root directory of this source tree.
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import numpy as np
 from gp.mean_functions import Zero
 from gp.conditionals import feature_conditional
