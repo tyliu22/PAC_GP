@@ -15,7 +15,7 @@ import matplotlib.pylab as plt
 import numpy as np
 from utils import metrics
 from copy import deepcopy as cp
-from gp import kerns
+from pac_gp.gp import kerns
 import pandas as pd
 import os
 import itertools
@@ -26,7 +26,7 @@ import utils.plotting as plotting
 import sklearn.datasets
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
-import utils.helpers as helpers
+import utils.helpers_nigp as helpers
 import utils.load_dataset as load_dataset
 
 
@@ -58,35 +58,29 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     data = []
 
     # vary number of inducing points
-    print('Start running sparse GP experiments:')
+    print('start sparse gp algorithms')
     for nInd in nInd_range:
         for i in range(n_repetitions):
-            print('Sparse GP algorithm 1: bkl-PAC Inducing Hyp GP')
-            RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
-                                     test_size=test_size, ARD=ARD, nInd=nInd,
-                                     epsilon=epsilon, loss=loss)
-            print('Sparse GP algorithm 2: sqrt-PAC Inducing Hyp GP')
-            RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP', seed=i,
-                                      test_size=test_size, ARD=ARD, nInd=nInd,
-                                      epsilon=epsilon, loss=loss)
-            print('Sparse GP algorithm 3: GPflow VFE')
             RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
                                      test_size=test_size, ARD=ARD, nInd=nInd,
                                      epsilon=epsilon, loss=loss)
-            print('Sparse GP algorithm 4: GPflow FITC')
             RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
                                       epsilon=epsilon, loss=loss)
+            # RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
+            #                          test_size=test_size, ARD=ARD, nInd=nInd,
+            #                          epsilon=epsilon, loss=loss)
+            RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP', seed=i,
+                                      test_size=test_size, ARD=ARD, nInd=nInd,
+                                      epsilon=epsilon, loss=loss)
 
-            data += RV_pac
+            # data += RV_pac
             data += RV_vfe
             data += RV_fitc
             data += RV_pac2
 
-    print('End experiments')
     df = pd.DataFrame(data)
     df.to_pickle(fn_out)
-    # df.to_pickle("sparse_GP_dataframe.pkl")
 
 
 if __name__ == '__main__':
@@ -103,7 +97,7 @@ if __name__ == '__main__':
                         default=0.2)
     parser.add_argument('-e', '--epsilon', help='set epsilon', default=0.6)
     parser.add_argument('-n', '--n_reps', help='number of repetitions',
-                        default=10)
+                        default=1)
     parser.add_argument('-s', '--size', help='number of inducing variables',
                         default='S')
     parser.add_argument('-l', '--loss', help='loss function',
@@ -130,14 +124,14 @@ if __name__ == '__main__':
         nInd_range = np.array([100, 200, 300, 400, 500])
 
     if args.run:
-        print('Run Experiments')
+        # print('Run Experiments')
         run(args.dataset, fn_results, nInd_range,
             test_size=float(args.test_size), ARD=args.ARD,
             epsilon=args.epsilon, n_repetitions=args.n_reps, loss=args.loss)
 
     if args.plot:
         D = pandas.read_pickle(fn_results)
-        models = ['bkl-PAC Inducing Hyp GP', 'sqrt-PAC Inducing Hyp GP',
+        models = ['sqrt-PAC Inducing Hyp GP',
                   'GPflow VFE', 'GPflow FITC']
         plotting.plot(D, models, x="nInd", xticks=[0.2, 0.4, 0.6, 0.8, 1.0],
                       ylim=(0, 0.85))

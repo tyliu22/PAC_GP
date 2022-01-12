@@ -67,14 +67,14 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
             RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
                                       epsilon=epsilon, loss=loss)
-            RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
-                                     test_size=test_size, ARD=ARD, nInd=nInd,
-                                     epsilon=epsilon, loss=loss)
+            # RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
+            #                          test_size=test_size, ARD=ARD, nInd=nInd,
+            #                          epsilon=epsilon, loss=loss)
             RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
                                       epsilon=epsilon, loss=loss)
 
-            data += RV_pac
+            # data += RV_pac
             data += RV_vfe
             data += RV_fitc
             data += RV_pac2
@@ -139,4 +139,7 @@ if __name__ == '__main__':
         fn_pdf = os.path.join('ind_points', '%s.pdf' % fn_base)
         plt.savefig(fn_png)
         plt.savefig(fn_pdf)
+        print('End')
+        plt.show()
+
         # plt.close()

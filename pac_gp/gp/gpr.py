@@ -227,3 +227,7 @@ class SVGP:
             var = var + self.sn2
 
         return mean, var
+
+
+
+

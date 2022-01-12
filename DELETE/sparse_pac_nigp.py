@@ -30,7 +30,6 @@ from tensorflow.python.ops.distributions.kullback_leibler import kl_divergence a
 
 from gp.gpr import GPRFITC
 from gp.gpr import GPR
-from gp.gpr import NIGPR
 from gp.kerns import RBF
 from gp.mean_functions import Zero
 

@@ -23,11 +23,11 @@ from pac_gp.gp.kerns import RBF
 from pac_gp.gp.mean_functions import Zero
 
 from pac_gp.utils.bin_kl import BinaryKLInv
-from pac_gp.utils.utils import expand_vector
-from pac_gp.utils.utils import flatten
-from pac_gp.utils.utils import Configurable
-from pac_gp.utils.utils import variable_summaries
-from pac_gp.utils.utils import clamp_and_round
+from pac_gp.utils.utils_gp import expand_vector
+from pac_gp.utils.utils_gp import flatten
+from pac_gp.utils.utils_gp import Configurable
+from pac_gp.utils.utils_gp import variable_summaries
+from pac_gp.utils.utils_gp import clamp_and_round
 from pac_gp.utils.transformations import Log1pe
 
 
