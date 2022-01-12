@@ -592,33 +592,33 @@ class NIGP_PAC_HYP_GP(NIGP_PAC_FULL_GP_BASE):
         self.objective_grad = tf.gradients(self.objective, variables)
 
 
-    # def _build_predict_NIGP_reg_item(self, feed):
-    #     """
-    #     Calculate the derivative of GP mean function
-    #     mean_function is assumed as zero() function
-    #     """
-    #
-    #     N = tf.shape(self.X)[0]
-    #
-    #     K_X_star = self.gp.kern.K(self.VAR_X_test, self.VAR_X_train)
-    #     K = self.gp.kern.K(self.VAR_X_train)
-    #     K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter)
-    #     K_inv = tf.linalg.inv(K)
-    #
-    #     mean_f = tf.matmul(tf.matmul(K_X_star, K_inv), self.Y)
-    #     f_grad = tf.gradients(mean_f, self.VAR_X_test)
-    #     with tf.Session() as sess:
-    #         mean_f_value = sess.run(mean_f, feed_dict=feed)
-    #         grad_posterior_mean = sess.run(f_grad, feed_dict=feed)
-    #         # grad_posterior_mean = sess.run(f_grad, feed_dict={VAR_X_train: self.X, VAR_X_test: self.X})
-    #
-    #     # MUST be the diagnal matrix,
-    #     f_grad_mean = np.diag(np.diag(grad_posterior_mean[0].dot(self.noise_input_variance).dot(grad_posterior_mean[0].T)))
-    #     f_grad_mean_tf = tf.convert_to_tensor(f_grad_mean, tf.float64)
-    #     # regu_item = tf.matmul( tf.matmul(grad_posterior_mean, self.input_noise_variance), tf.transpose(grad_posterior_mean))
-    #     # regu_diag_item = tf.matrix_diag(tf.matrix_diag_part(regu_item))
-    #
-    #     return f_grad_mean, f_grad_mean_tf
+    def _build_predict_NIGP_reg_item(self, feed):
+        """
+        Calculate the derivative of GP mean function
+        mean_function is assumed as zero() function
+        """
+
+        N = tf.shape(self.X)[0]
+
+        K_X_star = self.gp.kern.K(self.VAR_X_test, self.VAR_X_train)
+        K = self.gp.kern.K(self.VAR_X_train)
+        K += tf.eye(N, dtype=tf.float64) * (self.sn2 + self.jitter)
+        K_inv = tf.linalg.inv(K)
+
+        mean_f = tf.matmul(tf.matmul(K_X_star, K_inv), self.Y)
+        f_grad = tf.gradients(mean_f, self.VAR_X_test)
+        with tf.Session() as sess:
+            mean_f_value = sess.run(mean_f, feed_dict=feed)
+            grad_posterior_mean = sess.run(f_grad, feed_dict=feed)
+            # grad_posterior_mean = sess.run(f_grad, feed_dict={VAR_X_train: self.X, VAR_X_test: self.X})
+
+        # MUST be the diagnal matrix,
+        f_grad_mean = np.diag(np.diag(grad_posterior_mean[0].dot(self.noise_input_variance).dot(grad_posterior_mean[0].T)))
+        f_grad_mean_tf = tf.convert_to_tensor(f_grad_mean, tf.float64)
+        # regu_item = tf.matmul( tf.matmul(grad_posterior_mean, self.input_noise_variance), tf.transpose(grad_posterior_mean))
+        # regu_diag_item = tf.matrix_diag(tf.matrix_diag_part(regu_item))
+
+        return f_grad_mean, f_grad_mean_tf
 
 
 
