@@ -16,9 +16,18 @@ For running the experiments, GPflow and sklearn are also required. -->
 
 The experiments reported in the publication can be reproduced by executing
 
+1. Reproducing Noisy Input Gaussian Processing (NIGP) algorithms
+
 ```
-python epsilon_study.py  --run --plot
-python sparseGP_study.py --run --plot
+NIGP_Reg_method_1.py
+NIGP_Reg_method_2.py
+```
+
+2. Reproducing PAC-Bayes NIGP algorithms
+
+```
+NIGP_Reg_method_1.py
+NIGP_Reg_method_2.py
 ```
 
 
