@@ -222,30 +222,29 @@ class NIGPRFITC:
         w = tf.matrix_triangular_solve(Luu, Kus, lower=True)  # size M x Xnew
 
         tmp = tf.matrix_triangular_solve(tf.transpose(L), gamma, lower=False)
-        mean = tf.matmul(w, tmp, transpose_a=True) + self.mean_function(Xnew)
+        mean = tf.matmul(w, tmp, transpose_a=True) + self.mean_function(Xnew) # (20, 1)
         intermediateA = tf.matrix_triangular_solve(L, w, lower=True)
 
         # Q_** = w'w    K_*u M K_u* = intermediateA^T intermediateA
         if full_cov:
             var = self.kern.K(Xnew) - tf.matmul(w, w, transpose_a=True) \
-                  + tf.matmul(intermediateA, intermediateA, transpose_a=True)
-            var = tf.tile(tf.expand_dims(var, 2), tf.stack([1, 1, self.R]))
-            var += grad_posterior_mean
+                  + tf.matmul(intermediateA, intermediateA, transpose_a=True) + grad_posterior_mean# (20, 20)
+            # Dimension expand
+            var = tf.tile(tf.expand_dims(var, 2), tf.stack([1, 1, self.R])) # (20, 20, ?)
         else:
             # ******************************************************* #
             var = self.kern.Kdiag(Xnew) - tf.reduce_sum(tf.square(w), 0) \
-                  + tf.reduce_sum(tf.square(intermediateA), 0)  # size Xnew,
+                  + tf.reduce_sum(tf.square(intermediateA), 0) + grad_posterior_mean # size Xnew,
             var = tf.tile(tf.expand_dims(var, 1), tf.stack([1, self.R]))
-            var += grad_posterior_mean
 
         return mean, var
 
-    def _build_predict_y(self, Xnew, full_cov=False):
+    def _build_predict_y(self, Xnew, full_cov=False, grad_posterior_mean=None):
         """
         Compute the mean and variance of the observations at some new points
         Xnew.
         """
-        mean, var = self._build_predict_f(Xnew, full_cov)
+        mean, var = self._build_predict_f(Xnew, full_cov, grad_posterior_mean)
 
         if full_cov is True:
             noise = self.sn2 * tf.eye(tf.shape(Xnew)[0], dtype=tf.float64)

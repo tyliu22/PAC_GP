@@ -10,6 +10,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import sklearn.datasets
+# from uci_datasets import Dataset
 
 
 def load(dataset_name):
@@ -19,3 +20,6 @@ def load(dataset_name):
         raise Exception('Dataset %s is not known.' % dataset_name)
 
     return data
+# from uci_datasets import Dataset
+# data = Dataset("challenger")
+# x_train, y_train, x_test, y_test = data.get_split(split=0)

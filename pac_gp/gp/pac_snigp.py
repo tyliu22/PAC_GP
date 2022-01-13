@@ -303,10 +303,10 @@ class PAC_GP_BASE(Configurable):
         # *********************** Sparse NIGP ********************* #
         # ********************* To be modified ******************** #
         self.VAR_X_train = tf.placeholder(dtype=tf.float64,
-                                          shape=self.X.shape,
+                                          shape=(None, self.input_dim),
                                           name='Reg_item_train')
         self.VAR_X_test = tf.placeholder(dtype=tf.float64,
-                                         shape=self.X.shape,
+                                   shape=(None, self.input_dim),
                                          name='Reg_item_test')
         self.VAR_Z_tf = tf.placeholder(dtype=tf.float64,
                                    shape=(self.num_inducing, self.input_dim),
@@ -575,7 +575,7 @@ class PAC_INDUCING_HYP_NIGP(PAC_SPARSE_NIGP_BASE):
                 # self.kernel.lengthscale = self.pos_trans.forward(res[1])
                 # self.kernel.variance = self.pos_trans.forward(res[2])
                 # ***************************** #
-                self.VAR_X_train: self.X,
+                self.VAR_X_train: self.Z,
                 self.VAR_X_test: self.X,
                 self.VAR_Z_tf: self.Z,
                 # ***************************** #
