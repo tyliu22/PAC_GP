@@ -277,33 +277,6 @@ Q_mean_nigp, Q_cov_nigp = NIGP_posterior(x_data, x_data, y_data, l=l_opt, sigma_
                                                    sigma_y=noise_y, sigma_x=noise_x)
 
 
-def kl_mvn(m0, S0, m1, S1):
-    """
-    Kullback-Liebler divergence from Gaussian pm,pv to Gaussian qm,qv.
-    Also computes KL divergence from a single Gaussian pm,pv to a set
-    of Gaussians qm,qv.
-
-
-    From wikipedia
-    KL( (m0, S0) || (m1, S1))
-         = .5 * ( tr(S1^{-1} S0) + log |S1|/|S0| +
-                  (m1 - m0)^T S1^{-1} (m1 - m0) - N )
-    """
-    # store inv diag covariance of S1 and diff between means
-    N = m0.shape[0]
-    iS1 = np.linalg.inv(S1)
-    diff = m1 - m0
-
-    # kl is made of three terms
-    tr_term = np.trace(iS1.dot(S0))
-    det_term = np.log(np.linalg.det(S1) / np.linalg.det(S0))  # np.sum(np.log(S1)) - np.sum(np.log(S0))
-    quad_term = diff.T.dot(np.linalg.inv(S1)).dot(diff)  # np.sum( (diff*diff) * iS1, axis=1)
-    # print(tr_term,det_term,quad_term)
-    return .5 * (tr_term + det_term + quad_term - N)
-
-# KL_divergence_nigp = kl_mvn(P_mean_nigp, P_cov_nigp, Q_mean_nigp, Q_cov_nigp)
-
-
 def cal_KL_divergence(P_mean_, P_cov_, Q_mean_, Q_cov_):
     P_mean = tf.placeholder(tf.float32, shape=P_mean_.shape)
     P_cov = tf.placeholder(tf.float32, shape=P_cov_.shape)
@@ -329,18 +302,7 @@ def cal_KL_divergence(P_mean_, P_cov_, Q_mean_, Q_cov_):
     return KL_divergence[0]
 
 
-def compute_kl(P_mean_nigp, P_cov_nigp, Q_mean_nigp, Q_cov_nigp):
-    # Compute KL divergence between two Gaussians (self and other)
-    # (refer to the paper)
-    # b is the variance of priors
-    b1 = torch.pow(self.sigma, 2)
-    b0 = torch.pow(other.sigma, 2)
 
-    term1 = torch.log(torch.div(b0, b1))
-    term2 = torch.div(torch.pow(self.mu - other.mu, 2), b0)
-    term3 = torch.div(b1, b0)
-    kl_div = (torch.mul(term1 + term2 + term3 - 1, 0.5)).sum()
-    return kl_div
 
 # KL_divergence_nigp = cal_KL_divergence(P_mean_nigp, P_cov_nigp, Q_mean_nigp, Q_cov_nigp)
 

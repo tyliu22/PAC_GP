@@ -61,12 +61,12 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     print('start sparse gp algorithms')
     for nInd in nInd_range:
         for i in range(n_repetitions):
-            RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
-                                     test_size=test_size, ARD=ARD, nInd=nInd,
-                                     epsilon=epsilon, loss=loss)
-            RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
-                                      test_size=test_size, ARD=ARD, nInd=nInd,
-                                      epsilon=epsilon, loss=loss)
+            # RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
+            #                          test_size=test_size, ARD=ARD, nInd=nInd,
+            #                          epsilon=epsilon, loss=loss)
+            # RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
+            #                           test_size=test_size, ARD=ARD, nInd=nInd,
+            #                           epsilon=epsilon, loss=loss)
             # RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
             #                          test_size=test_size, ARD=ARD, nInd=nInd,
             #                          epsilon=epsilon, loss=loss)

@@ -54,6 +54,13 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     X = preprocessing.scale(X)
     Y = preprocessing.scale(Y)
     F = X.shape[1]
+    Dim = X.shape[1]
+
+    noise_input_variance = np.identity(Dim)   # input noise variance
+
+    # ndarray: [X.shape[0], Dim]
+    noise_eps = np.random.multivariate_normal(np.zeros(Dim), noise_input_variance,
+                                              X.shape[0])
 
     data = []
 
@@ -61,22 +68,23 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     print('start sparse gp algorithms')
     for nInd in nInd_range:
         for i in range(n_repetitions):
-            RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
-                                     test_size=test_size, ARD=ARD, nInd=nInd,
-                                     epsilon=epsilon, loss=loss)
-            RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
-                                      test_size=test_size, ARD=ARD, nInd=nInd,
-                                      epsilon=epsilon, loss=loss)
+            # RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
+            #                          test_size=test_size, ARD=ARD, nInd=nInd,
+            #                          epsilon=epsilon, loss=loss)
+            # RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
+            #                           test_size=test_size, ARD=ARD, nInd=nInd,
+            #                           epsilon=epsilon, loss=loss)
             # RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
             #                          test_size=test_size, ARD=ARD, nInd=nInd,
             #                          epsilon=epsilon, loss=loss)
             RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
-                                      epsilon=epsilon, loss=loss)
+                                      epsilon=epsilon, loss=loss,
+                                      noise_input_variance=noise_input_variance)
 
             # data += RV_pac
-            data += RV_vfe
-            data += RV_fitc
+            # data += RV_vfe
+            # data += RV_fitc
             data += RV_pac2
 
     df = pd.DataFrame(data)

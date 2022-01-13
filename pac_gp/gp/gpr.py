@@ -89,9 +89,9 @@ class GPR:
 
 class GPRFITC:
     def __init__(self, X, Y, sn2, kern, mean_function=None, Z=None):
-        self.X = X
-        self.Y = Y
-        self.Z = Z
+        self.X = X # (?, 13)
+        self.Y = Y # (?, 1)
+        self.Z = Z # (20, 13)
 
         self.sn2 = sn2
 
@@ -104,26 +104,26 @@ class GPRFITC:
         self.R = tf.shape(Y)[1]   # Output dimensionality
 
     def _build_common_terms(self):
-        err = self.Y - self.mean_function(self.X)  # size N x R
-        Kdiag = self.kern.Kdiag(self.X)
-        Kuf = self.kern.K(self.Z, self.X)
-        Kuu = self.kern.K(self.Z) + 1e-6 * tf.eye(self.M, dtype=tf.float64)
+        err = self.Y - self.mean_function(self.X)  # size N x R (?, 1)
+        Kdiag = self.kern.Kdiag(self.X) # (?, )
+        Kuf = self.kern.K(self.Z, self.X) # (20, ?)
+        Kuu = self.kern.K(self.Z) + 1e-6 * tf.eye(self.M, dtype=tf.float64) # (20, 20)
 
         # choelsky: Luu Luu^T = Kuu
-        Luu = tf.cholesky(Kuu)
+        Luu = tf.cholesky(Kuu) # (20, 20)
         #  V^T V = Qff = Kuf^T Kuu^-1 Kuf
-        V = tf.matrix_triangular_solve(Luu, Kuf)
+        V = tf.matrix_triangular_solve(Luu, Kuf) # (20, ?)
 
-        diagQff = tf.reduce_sum(tf.square(V), 0)
-        nu = Kdiag - diagQff + self.sn2
+        diagQff = tf.reduce_sum(tf.square(V), 0) # (?, )
+        nu = Kdiag - diagQff + self.sn2 # (?, )
 
         B = tf.eye(self.M, dtype=tf.float64)
-        B += tf.matmul(V / nu, V, transpose_b=True)
-        L = tf.cholesky(B)
-        beta = err / tf.expand_dims(nu, 1)  # size N x R
-        alpha = tf.matmul(V, beta)  # size N x R
+        B += tf.matmul(V / nu, V, transpose_b=True) # (20, 20)
+        L = tf.cholesky(B) # (20, 20)
+        beta = err / tf.expand_dims(nu, 1)  # size N x R  (?, 1)
+        alpha = tf.matmul(V, beta)  # size N x R   (20, 1)
 
-        gamma = tf.matrix_triangular_solve(L, alpha, lower=True)  # size N x R
+        gamma = tf.matrix_triangular_solve(L, alpha, lower=True)  # size N x R  (20, 1)
 
         return err, nu, Luu, L, alpha, beta, gamma
 
@@ -132,14 +132,15 @@ class GPRFITC:
         Compute the mean and variance of the latent function at some new points
         Xnew.
         """
+        # Xnew : (20, 13)
         _, _, Luu, L, _, _, gamma = self._build_common_terms()
-        Kus = self.kern.K(self.Z, Xnew)  # size  M x Xnew
+        Kus = self.kern.K(self.Z, Xnew)  # size  M x Xnew # (20, 20)
 
-        w = tf.matrix_triangular_solve(Luu, Kus, lower=True)  # size M x Xnew
+        w = tf.matrix_triangular_solve(Luu, Kus, lower=True)  # size M x Xnew # (20, 20)
 
-        tmp = tf.matrix_triangular_solve(tf.transpose(L), gamma, lower=False)
-        mean = tf.matmul(w, tmp, transpose_a=True) + self.mean_function(Xnew)
-        intermediateA = tf.matrix_triangular_solve(L, w, lower=True)
+        tmp = tf.matrix_triangular_solve(tf.transpose(L), gamma, lower=False) # (20, 1)
+        mean = tf.matmul(w, tmp, transpose_a=True) + self.mean_function(Xnew) # (20, 1)
+        intermediateA = tf.matrix_triangular_solve(L, w, lower=True) # (20, 20)
 
         if full_cov:
             var = self.kern.K(Xnew) - tf.matmul(w, w, transpose_a=True) \

@@ -7,7 +7,8 @@ LICENSE file in the root directory of this source tree.
 @author: David Reeb, Andreas Doerr, Sebastian Gerwinn, Barbara Rakitsch
 """
 
-from gp.pac_gp import PAC_HYP_GP, PAC_INDUCING_HYP_GP, PAC_GP_BASE
+from gp.pac_snigp import PAC_INDUCING_HYP_NIGP, PAC_GP_BASE
+from gp.pac_gp import PAC_HYP_GP, PAC_INDUCING_HYP_GP
 from GPy.models import GPRegression, SparseGPRegression
 from gp.mean_functions import Zero
 from gp import kerns
@@ -103,7 +104,7 @@ def transform_to_pac_gp(model, epsilon=0.1, delta=0.01, ARD=False,
 
 
 def run_model(_model, metrics, X_test, Y_test, epsilon, delta, ARD,
-              loss='01_loss'):
+              loss='01_loss', noise_input_variance=None):
     """
     running model
     input
@@ -162,7 +163,7 @@ def init_inducing_points(X, m):
 
 
 def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
-                nInd=None, suffix='', loss='01_loss'):
+                nInd=None, suffix='', loss='01_loss', noise_input_variance=None):
     """
     setting up model
     input
@@ -201,21 +202,22 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)
         mean_function = Zero()
-        model = PAC_INDUCING_HYP_GP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
+        model = PAC_INDUCING_HYP_NIGP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
                                     epsilon=epsilon,
                                     mean_function=mean_function,
-                                    delta=delta, verbosity=0, loss=loss)
+                                    delta=delta, verbosity=0, loss=loss,
+                                    noise_input_variance=noise_input_variance)
 
     elif model_name == 'sqrt-PAC Inducing Hyp GP':
         Z = init_inducing_points(X, nInd)
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)
         mean_function = Zero()
-        model = PAC_INDUCING_HYP_GP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
+        model = PAC_INDUCING_HYP_NIGP(X=X, Y=Y, Z=Z, kernel=kern, sn2=sn2_init,
                                     epsilon=epsilon,
                                     mean_function=mean_function,
-                                    delta=delta, verbosity=0, method='naive',
-                                    loss=loss)
+                                    delta=delta, verbosity=0, method='naive',loss=loss,
+                                    noise_input_variance=noise_input_variance)
 
     elif model_name == 'GPflow Full GP':
         kern = gpflow.kernels.RBF(F, ARD=ARD)
@@ -238,7 +240,7 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
 
 
 def compare(X, Y, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
-            epsilon=0.2, nInd=None, suffix='', loss='01_loss'):
+            epsilon=0.2, nInd=None, suffix='', loss='01_loss', noise_input_variance=None):
         """
         running and evaluating model
         input
@@ -275,14 +277,21 @@ def compare(X, Y, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
         rv = train_test_split(X, Y, random_state=seed, test_size=test_size)
         X_train, X_test, Y_train, Y_test = rv
 
+        if noise_input_variance != None:
+            print("Noise input")
+            noise_eps = np.random.multivariate_normal(np.zeros(X.shape[1]), noise_input_variance,
+                                                  X_train.shape[0])
+            X_train += noise_eps
+
         # running model
         Ntest = Y_test.shape[0]
         N = Y_train.shape[0]
         t0 = time.time()
         model = build_model(model_name, X_train, Y_train, ARD=ARD, delta=delta,
-                            epsilon=epsilon, nInd=nInd, suffix='', loss=loss)
+                            epsilon=epsilon, nInd=nInd, suffix='', loss=loss,
+                            noise_input_variance=noise_input_variance)
         RV = run_model(model, metric, X_test, Y_test, epsilon, delta, ARD,
-                       loss=loss)
+                       loss=loss, noise_input_variance=noise_input_variance)
         t1 = time.time()
         t_diff = t1 - t0
 

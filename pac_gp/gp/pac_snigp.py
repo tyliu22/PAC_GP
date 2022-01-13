@@ -17,8 +17,7 @@ from scipy.optimize import minimize
 from tensorflow.contrib.distributions import MultivariateNormalFullCovariance as MVN
 from tensorflow.contrib.distributions import kl_divergence as KL
 
-from pac_gp.gp.gpr import GPRFITC
-from pac_gp.gp.gpr import GPR
+from pac_gp.gp.nigpr import NIGPRFITC
 from pac_gp.gp.kerns import RBF
 from pac_gp.gp.mean_functions import Zero
 
@@ -35,7 +34,7 @@ class PAC_GP_BASE(Configurable):
 
     def __init__(self, X, Y, sn2, kernel=None, mean_function=None,
                  epsilon=0.2, delta=0.01, verbosity=0, method='bkl',
-                 loss='01_loss'):
+                 loss='01_loss', noise_input_variance=None):
 
         assert X.ndim == 2
         assert Y.ndim == 2
@@ -54,6 +53,12 @@ class PAC_GP_BASE(Configurable):
         self.delta = delta
 
         self.sn2 = sn2
+        """
+            noise_input_variance to Tensor
+        """
+        self.noise_input_variance = noise_input_variance
+        self.noise_input_variance_tf = tf.convert_to_tensor(self.noise_input_variance)
+
 
         self.jitter = np.asarray(1e-6, dtype=np.float64)
 
@@ -255,15 +260,13 @@ class PAC_GP_BASE(Configurable):
     def _generate_ops(self):
         # Set up general TF graph for PAC-GP optimization
         self._generate_data_ops()
-        # This is a GP specific abstract method.
-        # To be implemented by each subclass
+        # This is a GP specific abstract method. To be implemented by each subclass
         self._generate_gp_ops()
 
         self._generate_prediction_ops()
         # Generate PAC bound ops
         self._generate_pac_ops()
-        # Objective and objective gradient ops
-        # To be implemented by each subclass
+        # Objective and objective gradient ops # To be implemented by each subclass
         self._generate_optimization_ops()
 
         # Common op to run all variable summaries
@@ -296,6 +299,20 @@ class PAC_GP_BASE(Configurable):
                                          name='sn2_unconstrained')
         self.sn2_tf = self.pos_trans.forward_tensor(self.sn2_unc_tf)
 
+
+        # *********************** Sparse NIGP ********************* #
+        # ********************* To be modified ******************** #
+        self.VAR_X_train = tf.placeholder(dtype=tf.float64,
+                                          shape=self.X.shape,
+                                          name='Reg_item_train')
+        self.VAR_X_test = tf.placeholder(dtype=tf.float64,
+                                         shape=self.X.shape,
+                                         name='Reg_item_test')
+        self.VAR_Z_tf = tf.placeholder(dtype=tf.float64,
+                                   shape=(self.num_inducing, self.input_dim),
+                                   name='Reg_item_inducing')
+
+
         # Hyper parameter rounding limits
         self.rounding_digits_tf = tf.placeholder(dtype=tf.int32, shape=(), name='round_digits')
         self.min_log_tf = tf.placeholder(dtype=tf.float64, shape=(), name='min_log')
@@ -318,16 +335,19 @@ class PAC_GP_BASE(Configurable):
             cov = full covariance matrix
             var = only diagonal entries
         """
-        self.pred_mean_f, self.pred_cov_f = self.gp._build_predict_f(self.Xnew_tf, full_cov=True)
-        self.pred_mean_y, self.pred_cov_y = self.gp._build_predict_y(self.Xnew_tf, full_cov=True)
+        self.pred_mean_f, self.pred_cov_f = self.gp._build_predict_f(self.Xnew_tf, full_cov=True,
+                                                                     grad_posterior_mean=self.f_grad_mean_tf)
+        self.pred_mean_y, self.pred_cov_y = self.gp._build_predict_y(self.Xnew_tf, full_cov=True,
+                                                                     grad_posterior_mean=self.f_grad_mean_tf)
 
-        _, self.pred_var_f = self.gp._build_predict_f(self.Xnew_tf,
-                                                      full_cov=False)
-        _, self.pred_var_y = self.gp._build_predict_y(self.Xnew_tf,
-                                                      full_cov=False)
+        _, self.pred_var_f = self.gp._build_predict_f(self.Xnew_tf,full_cov=False,
+                                                      grad_posterior_mean=self.f_grad_mean_tf)
+        _, self.pred_var_y = self.gp._build_predict_y(self.Xnew_tf,full_cov=False,
+                                                      grad_posterior_mean=self.f_grad_mean_tf)
 
         # GP predictive distribution for training inputs
-        self.train_mean, self.train_var = self.gp._build_predict_f(self.X_tf, full_cov=False)
+        self.train_mean, self.train_var = self.gp._build_predict_f(self.X_tf, full_cov=False,
+                                                                   grad_posterior_mean=self.f_grad_mean_tf)
         # Remove singleton dimensions
         self.train_mean = tf.squeeze(self.train_mean)           # ONLY VALID FOR output_dim == 1
         self.train_var = tf.squeeze(self.train_var)             # ONLY VALID FOR output_dim == 1
@@ -421,15 +441,16 @@ class PAC_GP_BASE(Configurable):
 
 
 
-class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
+class PAC_SPARSE_NIGP_BASE(PAC_GP_BASE):
 
     def __init__(self, X, Y, Z, sn2, kernel=None, mean_function=None,
-                 epsilon=0.2, delta=0.01, verbosity=0, method='bkl',loss='01_loss'):
+                 epsilon=0.2, delta=0.01, verbosity=0, method='bkl',
+                 loss='01_loss', noise_input_variance=None):
         assert Z.ndim == 2
         self.Z = Z
         self.num_inducing, _ = self.Z.shape
 
-        super(PAC_SPARSE_GP_BASE, self).__init__(X, Y, sn2, kernel,
+        super(PAC_SPARSE_NIGP_BASE, self).__init__(X, Y, sn2, kernel,
                                                  mean_function, epsilon, delta, method=method, loss=loss)
         self.verbosity = verbosity
 
@@ -440,8 +461,15 @@ class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
                                    name='Z')
 
         # Set up GP model
-        self.gp = GPRFITC(self.X_tf, self.Y_tf, self.sn2_tf,
-                          self.kernel, self.mean_function, self.Z_tf)
+        self.gp = NIGPRFITC(self.X_tf, self.Y_tf, self.sn2_tf,
+                            self.kernel, self.mean_function,
+                            self.Z_tf, self.noise_input_variance_tf)
+
+        # ****************************************************************************** #
+        # NIGP reg item: derivative of mean function
+        feed = self._get_reg_item_feed()
+        self.f_grad_mean, self.f_grad_mean_tf = \
+            self._build_predict_Sparse_NIGP_reg_item(feed)
 
         # P: GP prior (based on training data X)
         self.P_mean = self.mean_function(self.Z_tf)    # (num_data, output_dim)
@@ -450,14 +478,15 @@ class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
         self.P_cov += tf.eye(self.num_inducing, dtype=tf.float64) * self.jitter
 
         # Q: GP posterior
-        self.Q_mean, self.Q_cov = self.gp._build_predict_f(self.Z_tf, full_cov=True)
+        self.Q_mean, self.Q_cov = self.gp._build_predict_f(self.Z_tf, full_cov=True,
+                                                           grad_posterior_mean=self.f_grad_mean_tf)
         self.Q_mean = tf.squeeze(self.Q_mean)           # ONLY VALID FOR output_dim == 1
         self.Q_cov = tf.squeeze(self.Q_cov)             # ONLY VALID FOR output_dim == 1
         self.Q_cov += tf.eye(self.num_inducing, dtype=tf.float64) * self.jitter
 
 
     def _get_PAC_feed(self):
-        feed = super(PAC_SPARSE_GP_BASE, self)._get_PAC_feed()
+        feed = super(PAC_SPARSE_NIGP_BASE, self)._get_PAC_feed()
         feed[self.Z_tf] = self.Z
         return feed
 
@@ -465,70 +494,22 @@ class PAC_SPARSE_GP_BASE(PAC_GP_BASE):
         pass
 
     def _get_prediction_feed(self, Xnew):
-        feed = super(PAC_SPARSE_GP_BASE, self)._get_prediction_feed(Xnew)
+        feed = super(PAC_SPARSE_NIGP_BASE, self)._get_prediction_feed(Xnew)
         feed[self.Z_tf] = self.Z
         return feed
 
 # Actual PAC GP implementations based on the base classes above
 # These classes should be instantiated
 
-class PAC_INDUCING_GP(PAC_SPARSE_GP_BASE):
-    """ FITC sparse GP optimizing inducing inputs
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(PAC_INDUCING_GP, self).__init__(*args, **kwargs)
-        self.num_hyps = 0
-
-    def _get_optimization_x0(self):
-        # Reshape inducing inputs Z (num_inducing, input_dim)
-        # into 1D optimization vector x
-        variables = [self.Z]
-        return flatten(variables)
-
-    def _get_optimization_feed(self, x):
-        # Distribute 1D optimization vector x
-        # into individual model variables
-        shapes = [(self.num_inducing, self.input_dim)]
-        res = expand_vector(x, shapes)
-
-        feed = {
-                self.X_tf: self.X,
-                self.Y_tf: self.Y,
-                self.epsilon_tf: self.epsilon,
-                self.delta_tf: self.delta,
-                self.kernel.variance_unc_tf: self.pos_trans.backward(self.kernel.variance),
-                self.kernel.lengthscales_unc_tf: self.pos_trans.backward(self.kernel.lengthscale),
-                self.sn2_unc_tf: self.pos_trans.backward(self.sn2),
-                self.Z_tf: res[0],
-                self.num_hyps_tf: self.num_hyps,
-                self.min_log_tf: self.min_log,
-                self.max_log_tf: self.max_log,
-                self.rounding_digits_tf: self.rounding_digits
-               }
-        return feed
-
-    def _set_variables(self, x):
-        shapes = [(self.num_inducing, self.input_dim)]
-        res = expand_vector(x, shapes)
-        self.Z = res[0]
-
-    def _generate_optimization_ops(self):
-        variables = [self.Z_tf]
-        if self.method == 'bkl':
-            self.objective = self.upper_bound_bkl
-        else:
-            self.objective = self.upper_bound
-        self.objective_grad = tf.gradients(self.objective, variables)
 
 
-class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
+class PAC_INDUCING_HYP_NIGP(PAC_SPARSE_NIGP_BASE):
     """ FITC sparse GP optimizing inducing inputs
     and kernel hyperparameters
     """
 
     def __init__(self, *args, **kwargs):
-        super(PAC_INDUCING_HYP_GP, self).__init__(*args, **kwargs)
+        super(PAC_INDUCING_HYP_NIGP, self).__init__(*args, **kwargs)
 
     def _get_parameter_shapes(self):
         if self.kernel.ARD is True:
@@ -585,6 +566,33 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
                }
         return feed
 
+    # ******************* Sparse NIGP *************************** #
+    def _get_reg_item_feed(self):
+        feed = {
+                # self.Z = res[0]
+                # self.kernel.lengthscale = self.pos_trans.forward(res[1])
+                # self.kernel.variance = self.pos_trans.forward(res[2])
+                # ***************************** #
+                self.VAR_X_train: self.X,
+                self.VAR_X_test: self.X,
+                self.VAR_Z_tf: self.Z,
+                # ***************************** #
+                self.X_tf: self.X,
+                self.Y_tf: self.Y,
+                self.epsilon_tf: self.epsilon,
+                self.delta_tf: self.delta,
+                # ***************************** #
+                self.kernel.variance_unc_tf: self.pos_trans.backward(self.kernel.variance),
+                self.kernel.lengthscales_unc_tf: self.pos_trans.backward(self.kernel.lengthscale),
+                # ***************************** #
+                self.sn2_unc_tf: self.pos_trans.backward(self.sn2),
+                self.num_hyps_tf: self.num_hyps,
+                self.min_log_tf: self.min_log,
+                self.max_log_tf: self.max_log,
+                self.rounding_digits_tf: self.rounding_digits
+               }
+        return feed
+
     def _set_variables(self, x):
         shapes = self._get_parameter_shapes()
         res = expand_vector(x, shapes)
@@ -617,3 +625,102 @@ class PAC_INDUCING_HYP_GP(PAC_SPARSE_GP_BASE):
             self.debug_variables += 1
             # Common op to run all variable summaries
             self._debug_op = tf.summary.merge_all(key="stats_summaries")
+
+    # *********************************************************** #
+    # *********************************************************** #
+    def _build_predict_Sparse_NIGP_reg_item(self, feed):
+        """
+        Calculate the derivative of GP mean function
+        mean_function is assumed as zero() function
+        """
+        # self.VAR_X_test self.VAR_X_train self.VAR_Z_tf
+
+        err = self.Y - self.mean_function(self.VAR_X_test)  # size N x R
+        Kdiag = self.kern.Kdiag(self.VAR_X_test)
+        Kuf = self.kern.K(self.VAR_Z_tf, self.VAR_X_test)
+        Kuu = self.kern.K(self.VAR_Z_tf) + 1e-6 * tf.eye(self.M, dtype=tf.float64)
+
+        # choelsky: Luu Luu^T = Kuu
+        Luu = tf.cholesky(Kuu)
+        #  V^T V = Qff = Kuf^T Kuu^-1 Kuf
+        V = tf.matrix_triangular_solve(Luu, Kuf)
+
+        diagQff = tf.reduce_sum(tf.square(V), 0)
+        nu = Kdiag - diagQff + self.sn2
+
+        B = tf.eye(self.M, dtype=tf.float64)
+        B += tf.matmul(V / nu, V, transpose_b=True)
+        L = tf.cholesky(B)
+        beta = err / tf.expand_dims(nu, 1)  # size N x R
+        alpha = tf.matmul(V, beta)  # size N x R
+
+        gamma = tf.matrix_triangular_solve(L, alpha, lower=True)  # size N x R
+
+        Kus = self.kern.K(self.VAR_Z_tf, self.VAR_X_train)  # size  M x Xnew
+
+        w = tf.matrix_triangular_solve(Luu, Kus, lower=True)  # size M x Xnew
+
+        tmp = tf.matrix_triangular_solve(tf.transpose(L), gamma, lower=False)
+        mean = tf.matmul(w, tmp, transpose_a=True) + self.mean_function(self.VAR_X_train)
+
+
+        f_grad = tf.gradients(mean, self.VAR_X_train)
+        with tf.Session() as sess:
+            mean_f_value = sess.run(mean, feed_dict=feed)
+            grad_posterior_mean = sess.run(f_grad, feed_dict=feed)
+
+        # MUST be the diagnal matrix,
+        f_grad_mean = np.diag(np.diag(grad_posterior_mean[0].dot(self.noise_input_variance).dot(grad_posterior_mean[0].T)))
+        f_grad_mean_tf = tf.convert_to_tensor(f_grad_mean, tf.float64)
+
+        return f_grad_mean, f_grad_mean_tf
+
+
+class PAC_INDUCING_NIGP(PAC_SPARSE_NIGP_BASE):
+    """ FITC sparse GP optimizing inducing inputs
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(PAC_INDUCING_NIGP, self).__init__(*args, **kwargs)
+        self.num_hyps = 0
+
+    def _get_optimization_x0(self):
+        # Reshape inducing inputs Z (num_inducing, input_dim)
+        # into 1D optimization vector x
+        variables = [self.Z]
+        return flatten(variables)
+
+    def _get_optimization_feed(self, x):
+        # Distribute 1D optimization vector x
+        # into individual model variables
+        shapes = [(self.num_inducing, self.input_dim)]
+        res = expand_vector(x, shapes)
+
+        feed = {
+                self.X_tf: self.X,
+                self.Y_tf: self.Y,
+                self.epsilon_tf: self.epsilon,
+                self.delta_tf: self.delta,
+                self.kernel.variance_unc_tf: self.pos_trans.backward(self.kernel.variance),
+                self.kernel.lengthscales_unc_tf: self.pos_trans.backward(self.kernel.lengthscale),
+                self.sn2_unc_tf: self.pos_trans.backward(self.sn2),
+                self.Z_tf: res[0],
+                self.num_hyps_tf: self.num_hyps,
+                self.min_log_tf: self.min_log,
+                self.max_log_tf: self.max_log,
+                self.rounding_digits_tf: self.rounding_digits
+               }
+        return feed
+
+    def _set_variables(self, x):
+        shapes = [(self.num_inducing, self.input_dim)]
+        res = expand_vector(x, shapes)
+        self.Z = res[0]
+
+    def _generate_optimization_ops(self):
+        variables = [self.Z_tf]
+        if self.method == 'bkl':
+            self.objective = self.upper_bound_bkl
+        else:
+            self.objective = self.upper_bound
+        self.objective_grad = tf.gradients(self.objective, variables)

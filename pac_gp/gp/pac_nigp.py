@@ -476,9 +476,9 @@ class NIGP_PAC_FULL_GP_BASE(PAC_GP_BASE):
         # ****************************************************************************** #
 
         # NIGP reg item: derivative of mean function
-
         feed = self._get_reg_item_feed()
         self.f_grad_mean, self.f_grad_mean_tf = self._build_predict_NIGP_reg_item(feed)
+
 
         # P: GP prior (based on training data X)
         self.P_mean = self.mean_function(self.X_tf)    # (num_data, output_dim)
