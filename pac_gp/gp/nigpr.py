@@ -229,12 +229,14 @@ class NIGPRFITC:
         if full_cov:
             var = self.kern.K(Xnew) - tf.matmul(w, w, transpose_a=True) \
                   + tf.matmul(intermediateA, intermediateA, transpose_a=True)
-            var = tf.tile(tf.expand_dims(var, 2), tf.stack([1, 1, self.R])) + grad_posterior_mean
+            var = tf.tile(tf.expand_dims(var, 2), tf.stack([1, 1, self.R]))
+            var += grad_posterior_mean
         else:
             # ******************************************************* #
             var = self.kern.Kdiag(Xnew) - tf.reduce_sum(tf.square(w), 0) \
                   + tf.reduce_sum(tf.square(intermediateA), 0)  # size Xnew,
-            var = tf.tile(tf.expand_dims(var, 1), tf.stack([1, self.R])) + grad_posterior_mean
+            var = tf.tile(tf.expand_dims(var, 1), tf.stack([1, self.R]))
+            var += grad_posterior_mean
 
         return mean, var
 
