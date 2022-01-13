@@ -277,7 +277,7 @@ def compare(X, Y, model_name, seed, delta=0.01, test_size=0.2, ARD=False,
         rv = train_test_split(X, Y, random_state=seed, test_size=test_size)
         X_train, X_test, Y_train, Y_test = rv
 
-        if noise_input_variance != None:
+        if noise_input_variance is not None:
             print("Noise input")
             noise_eps = np.random.multivariate_normal(np.zeros(X.shape[1]), noise_input_variance,
                                                   X_train.shape[0])

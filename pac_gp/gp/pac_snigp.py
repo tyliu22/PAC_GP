@@ -451,7 +451,9 @@ class PAC_SPARSE_NIGP_BASE(PAC_GP_BASE):
         self.num_inducing, _ = self.Z.shape
 
         super(PAC_SPARSE_NIGP_BASE, self).__init__(X, Y, sn2, kernel,
-                                                 mean_function, epsilon, delta, method=method, loss=loss)
+                                                 mean_function, epsilon, delta,
+                                                   method=method, loss=loss,
+                                                   noise_input_variance=noise_input_variance)
         self.verbosity = verbosity
 
     def _generate_gp_ops(self):
@@ -636,9 +638,9 @@ class PAC_INDUCING_HYP_NIGP(PAC_SPARSE_NIGP_BASE):
         # self.VAR_X_test self.VAR_X_train self.VAR_Z_tf
 
         err = self.Y - self.mean_function(self.VAR_X_test)  # size N x R
-        Kdiag = self.kern.Kdiag(self.VAR_X_test)
-        Kuf = self.kern.K(self.VAR_Z_tf, self.VAR_X_test)
-        Kuu = self.kern.K(self.VAR_Z_tf) + 1e-6 * tf.eye(self.M, dtype=tf.float64)
+        Kdiag = self.kernel.Kdiag(self.VAR_X_test)
+        Kuf = self.kernel.K(self.VAR_Z_tf, self.VAR_X_test)
+        Kuu = self.kernel.K(self.VAR_Z_tf) + 1e-6 * tf.eye(self.M, dtype=tf.float64)
 
         # choelsky: Luu Luu^T = Kuu
         Luu = tf.cholesky(Kuu)
@@ -656,7 +658,7 @@ class PAC_INDUCING_HYP_NIGP(PAC_SPARSE_NIGP_BASE):
 
         gamma = tf.matrix_triangular_solve(L, alpha, lower=True)  # size N x R
 
-        Kus = self.kern.K(self.VAR_Z_tf, self.VAR_X_train)  # size  M x Xnew
+        Kus = self.kernel.K(self.VAR_Z_tf, self.VAR_X_train)  # size  M x Xnew
 
         w = tf.matrix_triangular_solve(Luu, Kus, lower=True)  # size M x Xnew
 
