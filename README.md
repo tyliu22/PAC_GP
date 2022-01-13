@@ -5,16 +5,15 @@ This is the companion code for the Gaussian process training method reported in 
 The code allows the users to experiment with the proposed GP training method.
 Please cite the above paper when reporting, reproducing or extending the results.
 
-## Purpose of the project
+## Datasets download
+  Datasets can be download via [UCI datasets]
+(https://github.com/treforevans/uci_datasets) or [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets.php)
 
-This software is a research prototype, solely developed for and published as
-part of the publication cited above. It will neither be
-maintained nor monitored in any way.
-
+<!-- 
 ## Requirements
 
 The PAC-GP core code depends on Tensorflow.
-For running the experiments, GPflow and sklearn are also required.
+For running the experiments, GPflow and sklearn are also required. -->
 
 ## Usage
 
@@ -35,10 +34,4 @@ If a similiar experiment shall be repeated on a different dataset, the easiest w
 If one wishes to use PAC-GP in a different context the wrapper function _compare_ in _experiments/helpers.py_ may be used. It takes care of splitting into train/test,
 initialization, training and evaluation.
 
-## License
 
-PAC-GP is open-sourced under the MIT license. See the
-[LICENSE](LICENSE) file for details.
-
-For a list of other open source components included in PAC_GP, see the
-file [3rd-party-licenses.txt](3rd-party-licenses.txt).
