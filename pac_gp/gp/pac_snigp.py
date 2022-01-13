@@ -637,6 +637,8 @@ class PAC_INDUCING_HYP_NIGP(PAC_SPARSE_NIGP_BASE):
         """
         # self.VAR_X_test self.VAR_X_train self.VAR_Z_tf
 
+        self.M = tf.shape(self.VAR_Z_tf)[0]   # Number of inducing points
+
         err = self.Y - self.mean_function(self.VAR_X_test)  # size N x R
         Kdiag = self.kernel.Kdiag(self.VAR_X_test)
         Kuf = self.kernel.K(self.VAR_Z_tf, self.VAR_X_test)
