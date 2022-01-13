@@ -3,8 +3,7 @@
 The code allows the users to experiment with the proposed NIGP training method.
 
 ## Datasets download
-  Datasets can be download via [UCI datasets]
-(https://github.com/treforevans/uci_datasets) or [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets.php)
+  Datasets can be download via [UCI datasets](https://github.com/treforevans/uci_datasets) or [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets.php)
 
 <!-- 
 ## Requirements
