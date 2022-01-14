@@ -11,7 +11,7 @@ LICENSE file in the root directory of this source tree.
 
 import sklearn.datasets
 # from uci_datasets import Dataset
-
+from uci_datasets.uci_datasets import Dataset
 
 def load(dataset_name):
     if dataset_name == 'boston':

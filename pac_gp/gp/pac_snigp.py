@@ -470,7 +470,7 @@ class PAC_SPARSE_NIGP_BASE(PAC_GP_BASE):
         # ****************************************************************************** #
         # NIGP reg item: derivative of mean function
         feed = self._get_reg_item_feed()
-        self.f_grad_mean, self.f_grad_mean_tf = \
+        _, self.f_grad_mean_tf = \
             self._build_predict_Sparse_NIGP_reg_item(feed)
 
         # P: GP prior (based on training data X)

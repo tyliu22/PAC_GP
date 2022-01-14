@@ -234,8 +234,9 @@ class NIGPRFITC:
         else:
             # ******************************************************* #
             var = self.kern.Kdiag(Xnew) - tf.reduce_sum(tf.square(w), 0) \
-                  + tf.reduce_sum(tf.square(intermediateA), 0) + grad_posterior_mean # size Xnew,
-            var = tf.tile(tf.expand_dims(var, 1), tf.stack([1, self.R]))
+                  + tf.reduce_sum(tf.square(intermediateA), 0)\
+                  + tf.diag_part(grad_posterior_mean) # size Xnew, (20,)
+            var = tf.tile(tf.expand_dims(var, 1), tf.stack([1, self.R])) # (20, ?)
 
         return mean, var
 
