@@ -58,7 +58,7 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     F = X.shape[1]
     Dim = X.shape[1]
 
-    noise_input_variance = np.identity(Dim)   # input noise variance
+    noise_input_variance = 0.1* np.identity(Dim)   # input noise variance
 
     # ndarray: [X.shape[0], Dim]
     noise_eps = np.random.multivariate_normal(np.zeros(Dim), noise_input_variance,
@@ -70,15 +70,18 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     print('start sparse gp algorithms')
     for nInd in nInd_range:
         for i in range(n_repetitions):
+            print('GPflow VFE')
             RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
                                      test_size=test_size, ARD=ARD, nInd=nInd,
                                      epsilon=epsilon, loss=loss)
+            print('GPflow FITC')
             RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
                                       epsilon=epsilon, loss=loss)
             # RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
             #                          test_size=test_size, ARD=ARD, nInd=nInd,
             #                          epsilon=epsilon, loss=loss)
+            print('sqrt-PAC Inducing Hyp GP')
             RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
                                       epsilon=epsilon, loss=loss,
