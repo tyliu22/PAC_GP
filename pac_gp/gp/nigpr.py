@@ -197,7 +197,7 @@ class NIGPRFITC:
         V = tf.matrix_triangular_solve(Luu, Kuf)
 
         diagQff = tf.reduce_sum(tf.square(V), 0)
-        nu = Kdiag - diagQff + self.sn2
+        nu = Kdiag - diagQff + self.sn2 + grad_posterior_mean
 
         B = tf.eye(self.M, dtype=tf.float64)
         B += tf.matmul(V / nu, V, transpose_b=True)
@@ -214,7 +214,7 @@ class NIGPRFITC:
         Compute the mean and variance of the latent function at some new points
         Xnew.
         """
-        _, _, Luu, L, _, _, gamma = self._build_common_terms()
+        _, _, Luu, L, _, _, gamma = self._build_common_terms(grad_posterior_mean)
         Kus = self.kern.K(self.Z, Xnew)  # size  M x Xnew
 
         # Q_** = w'w = K_*u K_uu^-1 K_u*
@@ -228,14 +228,13 @@ class NIGPRFITC:
         # Q_** = w'w    K_*u M K_u* = intermediateA^T intermediateA
         if full_cov:
             var = self.kern.K(Xnew) - tf.matmul(w, w, transpose_a=True) \
-                  + tf.matmul(intermediateA, intermediateA, transpose_a=True) + grad_posterior_mean# (20, 20)
+                  + tf.matmul(intermediateA, intermediateA, transpose_a=True) # (20, 20)
             # Dimension expand
             var = tf.tile(tf.expand_dims(var, 2), tf.stack([1, 1, self.R])) # (20, 20, ?)
         else:
             # ******************************************************* #
             var = self.kern.Kdiag(Xnew) - tf.reduce_sum(tf.square(w), 0) \
-                  + tf.reduce_sum(tf.square(intermediateA), 0)\
-                  + tf.diag_part(grad_posterior_mean) # size Xnew, (20,)
+                  + tf.reduce_sum(tf.square(intermediateA), 0) # size Xnew, (20,)
             var = tf.tile(tf.expand_dims(var, 1), tf.stack([1, self.R])) # (20, ?)
 
         return mean, var

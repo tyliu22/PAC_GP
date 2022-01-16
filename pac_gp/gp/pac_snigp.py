@@ -575,7 +575,7 @@ class PAC_INDUCING_HYP_NIGP(PAC_SPARSE_NIGP_BASE):
                 # self.kernel.lengthscale = self.pos_trans.forward(res[1])
                 # self.kernel.variance = self.pos_trans.forward(res[2])
                 # ***************************** #
-                self.VAR_X_train: self.Z,
+                self.VAR_X_train: self.X,
                 self.VAR_X_test: self.X,
                 self.VAR_Z_tf: self.Z,
                 # ***************************** #
@@ -671,10 +671,11 @@ class PAC_INDUCING_HYP_NIGP(PAC_SPARSE_NIGP_BASE):
         f_grad = tf.gradients(mean, self.VAR_X_train)
         with tf.Session() as sess:
             mean_f_value = sess.run(mean, feed_dict=feed)
-            grad_posterior_mean = sess.run(f_grad, feed_dict=feed)
 
-        # MUST be the diagnal matrix,
-        f_grad_mean = np.diag(np.diag(grad_posterior_mean[0].dot(self.noise_input_variance).dot(grad_posterior_mean[0].T)))
+            grad_posterior_mean = sess.run(f_grad, feed_dict=feed) # (N,Dim)
+
+        # MUST be the diagnal matrix, (N,)
+        f_grad_mean = np.diag(grad_posterior_mean[0].dot(self.noise_input_variance).dot(grad_posterior_mean[0].T))
         f_grad_mean_tf = tf.convert_to_tensor(f_grad_mean, tf.float64)
 
         return f_grad_mean, f_grad_mean_tf
