@@ -208,7 +208,7 @@ def build_model(model_name, X, Y, ARD=False, delta=0.01, epsilon=0.2,
                                     delta=delta, verbosity=0, loss=loss,
                                     noise_input_variance=noise_input_variance)
 
-    elif model_name == 'sqrt-PAC Inducing Hyp GP':
+    elif model_name == 'sqrt-PAC Inducing Hyp NIGP':
         Z = init_inducing_points(X, nInd)
         kern = kerns.RBF(input_dim=F, ARD=ARD)
         sn2_init = np.asarray([1.0 ** 2], dtype=np.float64)

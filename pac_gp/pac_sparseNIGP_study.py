@@ -81,8 +81,8 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
             # RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
             #                          test_size=test_size, ARD=ARD, nInd=nInd,
             #                          epsilon=epsilon, loss=loss)
-            print('sqrt-PAC Inducing Hyp GP')
-            RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp GP', seed=i,
+            print('sqrt-PAC Inducing Hyp NIGP')
+            RV_pac2 = helpers.compare(X, Y, 'sqrt-PAC Inducing Hyp NIGP', seed=i,
                                       test_size=test_size, ARD=ARD, nInd=nInd,
                                       epsilon=epsilon, loss=loss,
                                       noise_input_variance=noise_input_variance)
