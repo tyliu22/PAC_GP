@@ -151,11 +151,11 @@ class NIGPR:
         """
         mean, var = self._build_predict_f(Xnew, full_cov, grad_posterior_mean)
 
-        # if full_cov is True:
-        #     noise = self.sn2 * tf.eye(tf.shape(Xnew)[0], dtype=tf.float64)
-        #     var = var + noise[:, :, None]
-        # else:
-        #     var = var + self.sn2
+        if full_cov is True:
+            noise = self.sn2 * tf.eye(tf.shape(Xnew)[0], dtype=tf.float64)
+            var = var + noise[:, :, None]
+        else:
+            var = var + self.sn2
 
         return mean, var
 
