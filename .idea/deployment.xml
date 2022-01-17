@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="tianyliu@laureate3.eng.uts.edu.au:22" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="tianyliu@laureate1.eng.uts.edu.au:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/tianyliu/Data/remote/PAC_GP" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="tianyliu@laureate2.eng.uts.edu.au:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/tianyliu/Data/remote/PAC_GP" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="tianyliu@laureate3.eng.uts.edu.au:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/tianyliu/Data/remote/PAC_GP" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

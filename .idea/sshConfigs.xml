@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" host="laureate1.eng.uts.edu.au" id="12eb411d-6d50-4a26-bac9-74b4ffe992d0" port="22" nameFormat="DESCRIPTIVE" username="tianyliu" />
+    </configs>
+  </component>
+</project>
