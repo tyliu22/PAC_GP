@@ -28,7 +28,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 import utils.helpers_nigp as helpers
 import utils.load_dataset as load_dataset
-
+import tensorflow as tf
 
 
 
@@ -71,13 +71,13 @@ def run(dataset_name, fn_out, nInd_range, test_size=0.1, n_repetitions=3,
     for nInd in nInd_range:
         for i in range(n_repetitions):
             print('GPflow VFE')
-            # RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
-            #                          test_size=test_size, ARD=ARD, nInd=nInd,
-            #                          epsilon=epsilon, loss=loss)
-            # print('GPflow FITC')
-            # RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
-            #                           test_size=test_size, ARD=ARD, nInd=nInd,
-            #                           epsilon=epsilon, loss=loss)
+            RV_vfe = helpers.compare(X, Y, 'GPflow VFE', seed=i,
+                                     test_size=test_size, ARD=ARD, nInd=nInd,
+                                     epsilon=epsilon, loss=loss)
+            print('GPflow FITC')
+            RV_fitc = helpers.compare(X, Y, 'GPflow FITC', seed=i,
+                                      test_size=test_size, ARD=ARD, nInd=nInd,
+                                      epsilon=epsilon, loss=loss)
             # RV_pac = helpers.compare(X, Y, 'bkl-PAC Inducing Hyp GP', seed=i,
             #                          test_size=test_size, ARD=ARD, nInd=nInd,
             #                          epsilon=epsilon, loss=loss)
@@ -121,6 +121,8 @@ if __name__ == '__main__':
     args.test_size = float(args.test_size)
     args.n_reps = int(args.n_reps)
 
+    tf.set_random_seed(1)
+
     result_dir = 'results_rebuttal'
     fn_args = (args.dataset, args.loss, args.size, args.ARD, args.epsilon,
                100*args.test_size, args.n_reps)
@@ -144,7 +146,7 @@ if __name__ == '__main__':
 
     if args.plot:
         D = pandas.read_pickle(fn_results)
-        models = ['sqrt-PAC Inducing Hyp GP',
+        models = ['sqrt-PAC Inducing Hyp NIGP',
                   'GPflow VFE', 'GPflow FITC']
         plotting.plot(D, models, x="nInd", xticks=[0.2, 0.4, 0.6, 0.8, 1.0],
                       ylim=(0, 0.85))
